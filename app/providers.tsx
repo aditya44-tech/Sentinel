@@ -23,9 +23,9 @@ function getWeekFromRow(row: any): string | null {
 
 function mergeWeek(existing: any[] | undefined, entry: any) {
   const cur = existing ?? [];
-  const base = cur.some(h => h.isUploaded) ? cur : cur.filter(h => h.isUploaded);
   const week = normalizeWeek(entry.week);
-  const rest = base.filter(h => normalizeWeek(h.week) !== week);
+  // Keep all previously uploaded weeks, then replace/add this one
+  const rest = cur.filter(h => normalizeWeek(h.week) !== week);
   return [...rest, { ...entry, week, isUploaded: true }].sort((a, b) => weekNum(a.week) - weekNum(b.week));
 }
 
