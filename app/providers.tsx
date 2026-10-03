@@ -406,11 +406,8 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
     // flight when the next upload lands would either wipe the fresh upload or
     // leave the old intervention status behind.
     try {
-      await Promise.all([
-        fetch('/api/students', { method: 'DELETE' }),
-        fetch('/api/history', { method: 'DELETE' }),
-        fetch('/api/interventions', { method: 'DELETE' }),
-      ]);
+      const res = await fetch('/api/students', { method: 'DELETE' });
+      if (!res.ok) throw new Error('Reset failed');
     } catch (e) {
       console.error('Failed to reset server data', e);
     }

@@ -45,18 +45,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/interventions: wipe all interventions
-export async function DELETE() {
-  try {
-    const { clearAllStudents } = await import('@/lib/db');
-    clearAllStudents();
-
-    const { isDbConnected } = await import('@/lib/dbConnect');
-    if (await isDbConnected()) {
-      // Intentionally empty: interventions are now on the student document and reset clears students
-    }
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}

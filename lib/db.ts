@@ -111,6 +111,10 @@ export function getAllStudents(): StudentSummary[] {
   return state.students;
 }
 
+export function getSeedStudents(): StudentDetail[] {
+  return Object.values(studentDetailsMap).map(s => ({ ...s }));
+}
+
 export function getStudentDetail(studentId: string): StudentDetail | null {
   return state.details[studentId] ?? null;
 }
@@ -127,6 +131,42 @@ export function updateStudentRisk(studentId: string, update: Partial<StudentDeta
       riskLevel: update.riskLevel ?? state.students[idx].riskLevel,
     };
   }
+}
+
+export function patchStudentMemory(studentId: string, patch: Record<string, any>) {
+  const detail = state.details[studentId];
+  if (!detail) return null;
+  const update = { ...patch };
+  if (patch.activeIntervention === null) {
+    delete detail.activeIntervention;
+    delete update.activeIntervention;
+  }
+  if (patch.notificationLog) {
+    detail.notificationLog = [...(detail.notificationLog || []), ...(Array.isArray(patch.notificationLog) ? patch.notificationLog : [patch.notificationLog])];
+    delete update.notificationLog;
+  }
+  updateStudentRisk(studentId, update);
+  
+  if ('interventionStatus' in patch) {
+    const status = patch.interventionStatus as import('./types').InterventionStatus;
+    const idx = state.students.findIndex(s => s.studentId === studentId);
+    if (idx !== -1) state.students[idx].interventionStatus = status;
+    detail.interventionStatus = status;
+    
+    if (detail.activeIntervention) {
+      detail.activeIntervention.status = status;
+    }
+  }
+
+  if (patch.activeIntervention) {
+     detail.activeIntervention = patch.activeIntervention;
+     if (!patch.interventionStatus) {
+         detail.interventionStatus = patch.activeIntervention.status;
+         const idx = state.students.findIndex(s => s.studentId === studentId);
+         if (idx !== -1) state.students[idx].interventionStatus = patch.activeIntervention.status;
+     }
+  }
+  return detail;
 }
 
 export function getIntervention(studentId: string): StudentStatusData | null {

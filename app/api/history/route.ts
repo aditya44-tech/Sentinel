@@ -1,112 +1,49 @@
 import { NextResponse } from 'next/server';
-import dbConnect, { isDbConnected } from '@/lib/dbConnect';
-import { UploadHistory, Student } from '@/lib/models';
-import { getUploadHistory, addUploadHistory, deleteUploadHistory, getUploadRecord, revertUpload } from '@/lib/db';
+import { handle, BadRequest } from '@/lib/http';
+import * as store from '@/lib/store';
+import { affectedStudentIds, planUploadRevert } from '@/lib/uploadRevert';
 
-export async function GET() {
-  try {
-    if (await isDbConnected()) {
-      try {
-        const history = await UploadHistory.find({}).sort({ createdAt: -1 }).lean();
-        if (history && history.length > 0) {
-          return NextResponse.json(history);
-        }
-      } catch (err: any) {
-        console.warn("MongoDB history find failed:", err.message);
-      }
-    }
+export const dynamic = 'force-dynamic';
 
-    return NextResponse.json(getUploadHistory());
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+export const GET = handle(async () => {
+  return NextResponse.json(await store.listHistory());
+});
+
+export const POST = handle(async (req) => {
+  const data = await req.json();
+  const record = { ...data, id: data.id || `UPL-${Date.now()}`, createdAt: new Date().toISOString() };
+  await store.addHistory(record);
+  return NextResponse.json({ success: true, record });
+});
+
+export const DELETE = handle(async (req) => {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  const all = searchParams.get('all');
+
+  if (!id && all !== 'true') throw new BadRequest('Requires ?id=... or ?all=true');
+
+  if (all === 'true') {
+    // If all=true, just reset everything or clear history
+    await store.resetAll();
+    return NextResponse.json({ success: true });
   }
-}
 
-export async function POST(req: Request) {
-  try {
-    const data = await req.json();
-    const memoryRecord = addUploadHistory(data);
+  const record = await store.getHistoryRecord(id!);
+  if (!record) return NextResponse.json({ success: true, revertedStudentIds: [], removedStudentIds: [] });
 
-    if (await isDbConnected()) {
-      try {
-        // Use memoryRecord instead of data because memoryRecord has the auto-generated 'id'
-        const newRecord = await UploadHistory.create(memoryRecord);
-        return NextResponse.json({ success: true, record: newRecord });
-      } catch (err: any) {
-        console.warn("MongoDB history create failed:", err.message);
-      }
-    }
-
-    return NextResponse.json({ success: true, record: memoryRecord });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const ids = affectedStudentIds(record);
+  const currentById: Record<string, any> = {};
+  for (const sid of ids) {
+    const student = await store.getStudent(sid);
+    if (student) currentById[sid] = student;
   }
-}
 
-export async function DELETE(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    const uploadedAt = searchParams.get('uploadedAt');
-    const dbConnected = await isDbConnected();
+  const { updated, removedIds } = planUploadRevert(record, currentById);
+  if (updated.length > 0) await store.upsertStudents(updated);
+  for (const sid of removedIds) await store.deleteStudent(sid);
 
-    let record: any = getUploadRecord({ id: id || undefined, uploadedAt: uploadedAt || undefined });
+  await store.deleteHistoryRecord(id!);
 
-    // The log may only exist in MongoDB (e.g. after a server restart)
-    if (!record && dbConnected && (id || uploadedAt)) {
-      try {
-        record = await UploadHistory.findOne(id ? { id } : { uploadedAt }).lean();
-      } catch (err: any) {
-        console.warn("MongoDB history lookup failed:", err.message);
-      }
-    }
-
-    let revertedStudentIds: string[] = [];
-    let removedStudentIds: string[] = [];
-
-    if (record) {
-      // Roll the students back to their pre-upload state (authoritative, server-side)
-      const result = revertUpload(record);
-      revertedStudentIds = result.revertedStudents.map(s => s.studentId);
-      removedStudentIds = result.removedStudentIds;
-
-      if (dbConnected) {
-        try {
-          for (const student of result.revertedStudents) {
-            await Student.findOneAndUpdate(
-              { studentId: student.studentId },
-              { $set: student },
-              { upsert: true }
-            );
-          }
-          if (removedStudentIds.length > 0) {
-            await Student.deleteMany({ studentId: { $in: removedStudentIds } });
-          }
-        } catch (err: any) {
-          console.warn("MongoDB student revert failed:", err.message);
-        }
-      }
-    }
-
-    deleteUploadHistory(id || undefined, uploadedAt || undefined);
-
-    if (dbConnected) {
-      try {
-        if (id) {
-          await UploadHistory.deleteOne({ id });
-        } else if (uploadedAt) {
-          await UploadHistory.deleteOne({ uploadedAt });
-        } else {
-          await UploadHistory.deleteMany({});
-        }
-      } catch (err: any) {
-        console.warn("MongoDB history delete failed:", err.message);
-      }
-    }
-
-    return NextResponse.json({ success: true, revertedStudentIds, removedStudentIds });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
+  return NextResponse.json({ success: true, revertedStudentIds: updated.map(s => s.studentId), removedStudentIds: removedIds });
+});
