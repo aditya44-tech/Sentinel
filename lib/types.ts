@@ -3,6 +3,20 @@
  */
 
 export type RiskLevel = 'Low' | 'Medium' | 'High';
+
+export type StudentPlanResponseType =
+  | 'will_attend'
+  | 'need_different_time'
+  | 'need_to_talk'
+  | 'cant_take_part';
+
+export interface StudentPlanResponse {
+  responseType: StudentPlanResponseType;
+  respondedAt: string;
+  /** Computed: true if no response within 5 days of plan assignment */
+  noResponseFlag?: boolean;
+  escalationStep?: number;
+}
 export const INTERVENTION_STATUSES = [
   'None', 'Active', 'Resolved', 'Referred', 'Notified', 'Discontinued',
 ] as const;
@@ -96,6 +110,18 @@ export interface StudentDetail {
   submissionRate?: number;
   aiExplanation: string;
   suggestedAction: string;
+  /** Counseling record (from CS_InitialCounseling.csv upload) */
+  counseling?: import('./counseling').CounselingRecord | null;
+  /** Contact info (from CS_Contacts.csv upload) */
+  contactInfo?: import('./counseling').ContactRecord | null;
+  /** Contact log entries written by mentor */
+  contactLog?: import('./counseling').ContactLogEntry[];
+  /** Student plan response */
+  planResponse?: StudentPlanResponse | null;
+  /** Academic score before counseling modifier (counseling-adjusted score stored in riskScore) */
+  academicScore?: number;
+  /** Breakdown note for risk score (e.g. "Academic 58 × 1.40 = 81") */
+  scoreBreakdownNote?: string;
 }
 
 export interface InterventionDetails {
@@ -169,7 +195,7 @@ export interface OutcomeComparisonData {
   status?: string;
 }
 
-export type UploadType = 'WeeklyAttendance' | 'UnitTest1' | 'UnitTest2' | 'Backlogs' | 'FeeStatus' | 'LastSemResult' | 'EndSemResult';
+export type UploadType = 'WeeklyAttendance' | 'UnitTest1' | 'UnitTest2' | 'Backlogs' | 'FeeStatus' | 'LastSemResult' | 'EndSemResult' | 'InitialCounseling' | 'Contacts';
 
 export interface UploadLog {
   id?: string;

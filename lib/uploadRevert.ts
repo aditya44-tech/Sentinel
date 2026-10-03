@@ -40,6 +40,10 @@ export function buildSnapshot(detail: StudentDetail) {
     lastSemResult: clone(detail.lastSemResult ?? { score: 0, maxMarks: 0 }),
     endSemResult: clone(detail.endSemResult ?? { status: 'Upcoming' }),
     submissionRate: detail.submissionRate,
+    counseling: clone(detail.counseling ?? null),
+    contactInfo: clone(detail.contactInfo ?? null),
+    academicScore: detail.academicScore,
+    scoreBreakdownNote: detail.scoreBreakdownNote,
   };
 }
 
@@ -60,19 +64,43 @@ export function recomputeStudentRisk(existing: StudentDetail): StudentDetail {
   };
 
   const result = computeRiskScore(raw);
+  const academicScore = result.riskScore;
+
+  // Apply counseling modifier if a record exists
+  let finalScore = academicScore;
+  let scoreBreakdownNote: string | undefined;
+  if (existing.counseling) {
+    const { applyCounselingToScore, computeCounselingScore } = require('./counseling');
+    const c = existing.counseling;
+    const scored = computeCounselingScore(
+      c.reasonCode,
+      c.answers.find((a: any) => a.questionId === 'Q2')?.rating ?? 3,
+      c.answers.find((a: any) => a.questionId === 'Q3')?.rating ?? 3,
+      c.answers.find((a: any) => a.questionId === 'Q4')?.rating ?? 3,
+      c.answers.find((a: any) => a.questionId === 'Q5')?.rating ?? 3
+    );
+    const applied = applyCounselingToScore(academicScore, scored);
+    finalScore = applied.finalScore;
+    scoreBreakdownNote = applied.breakdownNote;
+  }
+
+  const finalLevel = finalScore >= 61 ? 'High' : finalScore >= 31 ? 'Medium' : 'Low';
 
   return {
     ...existing,
-    riskScore: result.riskScore,
-    riskLevel: result.riskLevel,
+    academicScore,
+    riskScore: finalScore,
+    riskLevel: finalLevel,
     contributingFactors: result.contributingFactors,
     suggestedAction: result.suggestedAction,
+    scoreBreakdownNote,
     aiExplanation: generateFallbackExplanation(
       { name: existing.name, department: existing.department, year: existing.year },
-      result
+      { ...result, riskScore: finalScore, riskLevel: finalLevel }
     ),
   };
 }
+
 
 /** Student ids a given upload log touched, in log order. */
 export function affectedStudentIds(record: UploadLog | any): string[] {
@@ -136,6 +164,10 @@ export function planUploadRevert(
         lastSemResult: clone(snap.lastSemResult ?? { score: 0, maxMarks: 0 }),
         endSemResult: clone(snap.endSemResult ?? { status: 'Upcoming' }),
         ...(snap.submissionRate !== undefined ? { submissionRate: snap.submissionRate } : {}),
+        ...(snap.counseling !== undefined ? { counseling: snap.counseling } : {}),
+        ...(snap.contactInfo !== undefined ? { contactInfo: snap.contactInfo } : {}),
+        ...(snap.academicScore !== undefined ? { academicScore: snap.academicScore } : {}),
+        ...(snap.scoreBreakdownNote !== undefined ? { scoreBreakdownNote: snap.scoreBreakdownNote } : {}),
       };
     } else {
       // Legacy uploads (no snapshot): strip only what that upload introduced

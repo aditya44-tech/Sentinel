@@ -1,0 +1,6 @@
+questionId,answerColumn,scoreColumn,question,answerOptions
+Q1,Q1_Why did you take admission in this course?,Q1_Score,Why did you take admission in this course?,Forced or pressured admission | Not interested in the course or branch | Financial stress | Family problems | Health or mental well-being | Adjustment problems | Academic difficulty | Peer or social issues | Other
+Q2,Q2_How motivated are you to continue this course?,Q2_Score,How motivated are you to continue this course?,1=Not at all motivated | 2=Slightly motivated | 3=Moderately motivated | 4=Quite motivated | 5=Very motivated
+Q3,Q3_How connected and comfortable do you feel in your class and college?,Q3_Score,How connected and comfortable do you feel in your class and college?,1=Not connected at all | 2=Slightly connected | 3=Moderately connected | 4=Quite connected | 5=Very connected
+Q4,Q4_How clear are you about what you want to do after this course?,Q4_Score,How clear are you about what you want to do after this course?,1=Not clear at all | 2=Slightly clear | 3=Somewhat clear | 4=Quite clear | 5=Very clear
+Q5,Q5_How stressed do you feel about your studies and personal matters?,Q5_Score,How stressed do you feel about your studies and personal matters?,1=Not stressed | 2=Slightly stressed | 3=Moderately stressed | 4=Quite stressed | 5=Extremely stressed

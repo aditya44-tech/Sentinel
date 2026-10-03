@@ -6,6 +6,11 @@ import { StudentSummary, StudentDetail, UploadLog, MentorActionPayload, OutcomeC
 import { computeRiskScore, generateFallbackExplanation, RawStudentData } from '@/lib/riskEngine';
 import { buildSnapshot, planUploadRevert, affectedStudentIds } from '@/lib/uploadRevert';
 import { normalizeWeek, weekNum } from '@/lib/weeks';
+import { computeCounselingScore, applyCounselingToScore } from '@/lib/counseling';
+
+// Pre-import counseling functions for use inside sync forEach callbacks
+const counselingFns = { computeCounselingScore, applyCounselingToScore };
+
 
 /** Case/whitespace-insensitive column lookup, so "Week", "WEEK" and " week " all work. */
 function getField(row: any, name: string): any {
@@ -327,6 +332,39 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
           const maxMarks = parseFloat(row.maxMarks || '100');
           existing.endSemResult = { score: isNaN(score) ? undefined : score, maxMarks, status: 'Completed' };
         }
+      } else if (uploadType === 'InitialCounseling') {
+        // The row is already a parsed CounselingRecord from parseCounselingCSV
+        const counselingRecord = row as any;
+        existing.counseling = counselingRecord;
+        // Recompute final score with counseling modifier (using pre-imported functions)
+        const { computeCounselingScore: ccs, applyCounselingToScore: acs } = counselingFns;
+        const c = counselingRecord;
+        const scored = ccs(
+          c.reasonCode,
+          c.answers.find((a: any) => a.questionId === 'Q2')?.rating ?? 3,
+          c.answers.find((a: any) => a.questionId === 'Q3')?.rating ?? 3,
+          c.answers.find((a: any) => a.questionId === 'Q4')?.rating ?? 3,
+          c.answers.find((a: any) => a.questionId === 'Q5')?.rating ?? 3
+        );
+        const raw: RawStudentData = {
+          studentId: sid, name: existing.name, department: existing.department, year: existing.year,
+          attendanceHistory: existing.attendanceHistory, subjectAttendance: existing.subjectAttendance, termTests: existing.termTests,
+          backlogs: existing.backlogCount || 0, backlogSubjects: existing.backlogSubjects || [], feeOverdueDays: existing.feeOverdueDays || 0,
+          submissionRate: existing.submissionRate,
+        };
+        const result = computeRiskScore(raw);
+        const academicScore = result.riskScore;
+        const applied = acs(academicScore, scored);
+        existing.academicScore = academicScore;
+        existing.riskScore = applied.finalScore;
+        existing.riskLevel = applied.finalScore >= 61 ? 'High' : applied.finalScore >= 31 ? 'Medium' : 'Low';
+        existing.scoreBreakdownNote = applied.breakdownNote;
+        existing.contributingFactors = result.contributingFactors;
+        existing.suggestedAction = result.suggestedAction;
+        existing.aiExplanation = generateFallbackExplanation({ name: existing.name, department: existing.department, year: existing.year }, { ...result, riskScore: applied.finalScore, riskLevel: existing.riskLevel });
+      } else if (uploadType === 'Contacts') {
+        // Row is a parsed ContactRecord
+        existing.contactInfo = row as any;
       }
 
       newDetails[sid] = existing;
