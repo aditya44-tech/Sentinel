@@ -411,37 +411,11 @@ export const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                 {student.contributingFactors.length} factors evaluated
               </span>
             </div>
-            <FactorBreakdownList factors={student.contributingFactors} />
+            <FactorBreakdownList factors={student.contributingFactors} counseling={student.counseling} />
 
-            {/* Counseling context row */}
-            {hasCounseling && student.counseling && (
-              <div className="p-3 border-2 border-[#0D0D0D] bg-[#F0E6FF] flex items-start justify-between gap-3 flex-wrap">
-                <div>
-                  <span className="text-[11px] font-black uppercase tracking-wider text-purple-700 block mb-0.5">
-                    Counseling Context
-                  </span>
-                  <p className="text-sm font-bold text-[#0D0D0D]">
-                    {student.scoreBreakdownNote ?? `Academic ${student.academicScore ?? student.riskScore} × ${student.counseling.scoreMultiplier.toFixed(2)} = ${student.riskScore}`}
-                  </p>
-                  <p className="text-xs text-neutral-600 mt-0.5">
-                    Reason: {student.counseling.answers[0]?.answerText} ·
-                    Counseling score: {student.counseling.counselingRiskScore}/100 ({student.counseling.counselingLevel})
-                  </p>
-                  {student.counseling.floorApplies && (
-                    <p className="text-xs font-black text-[#D62828] mt-0.5">
-                      Floor applied — {student.counseling.floorMinScore} min (Medium cap)
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setActiveTab('counseling')}
-                  className="neo-btn px-3 py-1.5 bg-[#A855F7] text-white text-xs font-black uppercase tracking-wider shrink-0"
-                >
-                  View Counseling
-                </button>
-              </div>
-            )}
+
           </div>
+
 
           {/* Historical Trend Charts: Attendance and Grades */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
