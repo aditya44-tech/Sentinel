@@ -54,6 +54,11 @@ export async function upsertStudents(list: unknown) {
     const { _id, __v, createdAt, updatedAt, ...rest } = s ?? {};
     return { ...rest, studentId: cleanId(rest.studentId) } as StudentDetail;
   });
+  // DEBUG: log attendanceHistory length for first student
+  if (clean[0]) {
+    const hist = (clean[0] as any).attendanceHistory ?? [];
+    console.log(`[store.upsertStudents] ${clean[0].studentId} attendanceHistory.length=${hist.length}`, hist.map((h: any) => h.week).join(','));
+  }
   if (!usingMongo()) { mem.bulkUpsertStudents(clean); return clean.length; }
   await db();
   await Student.bulkWrite(clean.map(s => ({
