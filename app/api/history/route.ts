@@ -19,18 +19,22 @@ export const POST = handle(async (req) => {
 export const DELETE = handle(async (req) => {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
+  const uploadedAt = searchParams.get('uploadedAt');
   const all = searchParams.get('all');
 
-  if (!id && all !== 'true') throw new BadRequest('Requires ?id=... or ?all=true');
+  if (!id && !uploadedAt && all !== 'true') throw new BadRequest('Requires ?id=..., ?uploadedAt=... or ?all=true');
 
   if (all === 'true') {
-    // If all=true, just reset everything or clear history
     await store.resetAll();
     return NextResponse.json({ success: true });
   }
 
-  const record = await store.getHistoryRecord(id!);
+  const record = id
+    ? await store.getHistoryRecord(id)
+    : await store.getHistoryByUploadedAt(uploadedAt!);
   if (!record) return NextResponse.json({ success: true, revertedStudentIds: [], removedStudentIds: [] });
+
+  const recordId: string = (record as any).id || id || uploadedAt!;
 
   const ids = affectedStudentIds(record);
   const currentById: Record<string, any> = {};
@@ -43,7 +47,7 @@ export const DELETE = handle(async (req) => {
   if (updated.length > 0) await store.upsertStudents(updated);
   for (const sid of removedIds) await store.deleteStudent(sid);
 
-  await store.deleteHistoryRecord(id!);
+  await store.deleteHistoryRecord(recordId);
 
   return NextResponse.json({ success: true, revertedStudentIds: updated.map(s => s.studentId), removedStudentIds: removedIds });
 });

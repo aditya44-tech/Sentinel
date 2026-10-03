@@ -468,7 +468,10 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
 
     // ── 3. Delete the log itself ────────────────────────────────────────────
     try {
-      await fetch(`/api/history?uploadedAt=${encodeURIComponent(uploadedAt)}`, { method: 'DELETE' });
+      const deleteParam = uploadLog && (uploadLog as any).id
+        ? `id=${encodeURIComponent((uploadLog as any).id)}`
+        : `uploadedAt=${encodeURIComponent(uploadedAt)}`;
+      await fetch(`/api/history?${deleteParam}`, { method: 'DELETE' });
     } catch (e) {
       console.error('Failed to delete upload log', e);
     }

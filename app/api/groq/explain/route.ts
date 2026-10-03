@@ -289,17 +289,8 @@ Write a single, concise sentence (max 30 words) explaining WHY this specific int
     // page refreshes without needing a second API call.
     if (body.studentId && mode === 'explain' && cleanText) {
       try {
-        const { isDbConnected } = await import('@/lib/dbConnect');
-        if (await isDbConnected()) {
-          const { Student } = await import('@/lib/models');
-          await Student.findOneAndUpdate(
-            { studentId: body.studentId },
-            { $set: { aiExplanation: finalText } },
-          );
-        } else {
-          const { updateStudentRisk } = await import('@/lib/db');
-          updateStudentRisk(body.studentId, { aiExplanation: finalText } as any);
-        }
+        const { patchStudent } = await import('@/lib/store');
+        await patchStudent(String(body.studentId), { aiExplanation: finalText });
       } catch (err: any) {
         console.warn('[Groq] Failed to persist explanation:', err.message);
       }

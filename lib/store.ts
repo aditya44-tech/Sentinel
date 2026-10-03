@@ -102,6 +102,11 @@ export async function getHistoryRecord(id: string) {
   await db(); return UploadHistory.findOne({ id: String(id) }).lean();
 }
 
+export async function getHistoryByUploadedAt(uploadedAt: string) {
+  if (!usingMongo()) return mem.getUploadRecord({ uploadedAt });
+  await db(); return UploadHistory.findOne({ uploadedAt: String(uploadedAt) }).lean();
+}
+
 export async function deleteHistoryRecord(id: string) {
   if (!usingMongo()) return mem.deleteUploadHistory(id);
   await db(); await UploadHistory.deleteOne({ id: String(id) });
