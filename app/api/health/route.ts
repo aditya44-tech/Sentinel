@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { handle } from '@/lib/http';
 import * as store from '@/lib/store';
+import { requireMentor } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = handle(async () => {
+  await requireMentor();
   const isMongo = store.usingMongo();
   try {
     const students = await store.listStudents();

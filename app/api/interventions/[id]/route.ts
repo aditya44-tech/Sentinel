@@ -3,6 +3,7 @@ import { handle, HttpError } from '@/lib/http';
 import * as store from '@/lib/store';
 import { getOutcomeFromStudent } from '@/lib/outcomes';
 import type { StudentDetail } from '@/lib/types';
+import { requireMentor } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,7 @@ export const dynamic = 'force-dynamic';
  * Never changes the baseline.
  */
 export const PATCH = handle(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
+  await requireMentor();
   const { id } = await params;
   let action: 'resolve' | 'reopen' = 'resolve';
   try {

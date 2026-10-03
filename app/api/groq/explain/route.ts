@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireMentor } from '../../../../lib/auth';
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -172,6 +173,7 @@ function buildDeterministicFallback(
  * mode: 'explain' (risk narrative) | 'rationale' (intervention rationale)
  */
 export async function POST(request: NextRequest) {
+  await requireMentor();
   const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
   let body: any = {};

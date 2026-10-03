@@ -21,7 +21,6 @@ interface LoginViewProps {
   onLogin: (user: AuthUser) => void;
 }
 
-const MENTOR_PASSWORD = 'sentinel123';
 
 export const LoginView: React.FC<LoginViewProps> = ({ students, onLogin }) => {
   const [tab, setTab] = useState<'mentor' | 'student'>('mentor');
@@ -31,31 +30,47 @@ export const LoginView: React.FC<LoginViewProps> = ({ students, onLogin }) => {
   const [studentId, setStudentId] = useState('');
   const [error, setError] = useState('');
 
-  const handleMentorLogin = (e: React.FormEvent) => {
+  const handleMentorLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (mentorUser.trim().toLowerCase() === 'mentor' && mentorPass === MENTOR_PASSWORD) {
-      onLogin({ role: 'mentor', name: 'Mentor' });
-    } else {
-      setError('Invalid mentor credentials. Please try again.');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'mentor', password: mentorPass }),
+      });
+      if (res.ok) {
+        onLogin({ role: 'mentor', name: 'Mentor' });
+      } else {
+        setError('Invalid mentor credentials. Please try again.');
+      }
+    } catch {
+      setError('An error occurred during login.');
     }
   };
 
-  const handleStudentLogin = (e: React.FormEvent) => {
+  const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     const sid = studentId.trim().toUpperCase();
-    const match = students.find(
-      (s) => s.studentId.toUpperCase() === sid
-    );
-    if (match) {
-      onLogin({ role: 'student', studentId: match.studentId, name: match.name });
-    } else {
-      setError(
-        students.length === 0
-          ? 'No students are registered yet. A mentor must upload student data first.'
-          : 'Student ID not found. Please check your ID and try again.'
-      );
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'student', studentId: sid }),
+      });
+      if (res.ok) {
+        const match = students.find((s) => s.studentId.toUpperCase() === sid);
+        onLogin({ role: 'student', studentId: sid, name: match?.name || sid });
+      } else {
+        setError(
+          students.length === 0
+            ? 'No students are registered yet. A mentor must upload student data first.'
+            : 'Student ID not found. Please check your ID and try again.'
+        );
+      }
+    } catch {
+      setError('An error occurred during login.');
     }
   };
 

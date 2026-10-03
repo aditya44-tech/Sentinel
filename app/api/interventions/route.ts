@@ -3,11 +3,13 @@ import { handle, BadRequest } from '@/lib/http';
 import * as store from '@/lib/store';
 import { countDataPoints } from '@/lib/outcomes';
 import type { MentorActionPayload } from '@/lib/types';
+import { requireMentor } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 /** GET /api/interventions — list all students that currently have an intervention */
 export const GET = handle(async () => {
+  await requireMentor();
   const students = await store.listStudents();
   const interventions = students
     .filter(s => s.interventionStatus && s.interventionStatus !== 'None')
@@ -17,6 +19,7 @@ export const GET = handle(async () => {
 
 /** POST /api/interventions — assign a new intervention OR log a Notified event */
 export const POST = handle(async (req: Request) => {
+  await requireMentor();
   const body = await req.json();
   const payload = body as MentorActionPayload & { baselineRiskScore?: number };
 

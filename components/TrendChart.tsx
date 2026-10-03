@@ -199,21 +199,6 @@ export const TrendChart: React.FC<TrendChartProps> = ({
                 isAnimationActive={true}
               />
             )}
-            {/* Single reading: a level line at that value makes the number visible */}
-            {singlePoint && Number.isFinite(singleValue) && (
-              <ReferenceLine
-                y={singleValue}
-                stroke={lineColor}
-                strokeWidth={3}
-                label={{
-                  value: `${singleValue}${unit}`,
-                  fill: lineColor,
-                  fontSize: 12,
-                  fontWeight: 'bold',
-                  position: 'insideTopLeft',
-                }}
-              />
-            )}
             <Line
               type="linear"
               dataKey={yKey}
@@ -222,6 +207,13 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               dot={{ r: singlePoint ? 7 : 5, fill: '#FFFFFF', stroke: '#0D0D0D', strokeWidth: 2.5 }}
               activeDot={{ r: 7, fill: lineColor, stroke: '#0D0D0D', strokeWidth: 3 }}
               isAnimationActive={true}
+              label={singlePoint ? {
+                position: 'top',
+                fill: lineColor,
+                fontSize: 12,
+                fontWeight: 'bold',
+                formatter: (v: any) => v != null ? `${v}${unit}` : '',
+              } : false}
             />
           </ComposedChart>
         </ResponsiveContainer>

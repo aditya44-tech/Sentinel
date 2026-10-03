@@ -2,14 +2,17 @@ import { NextResponse } from 'next/server';
 import { handle, BadRequest } from '@/lib/http';
 import * as store from '@/lib/store';
 import { affectedStudentIds, planUploadRevert } from '@/lib/uploadRevert';
+import { requireMentor } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = handle(async () => {
+  await requireMentor();
   return NextResponse.json(await store.listHistory());
 });
 
 export const POST = handle(async (req) => {
+  await requireMentor();
   const data = await req.json();
   const record = { ...data, id: data.id || `UPL-${Date.now()}`, createdAt: new Date().toISOString() };
   await store.addHistory(record);
@@ -17,6 +20,7 @@ export const POST = handle(async (req) => {
 });
 
 export const DELETE = handle(async (req) => {
+  await requireMentor();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   const uploadedAt = searchParams.get('uploadedAt');

@@ -4,4 +4,5 @@
  */
 import { register } from 'node:module';
 
+process.env.NODE_ENV = 'test';
 register(new URL('./ts-resolve-hooks.mjs', import.meta.url));

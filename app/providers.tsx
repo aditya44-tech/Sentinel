@@ -81,17 +81,25 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setIsClient(true);
-    try {
-      const savedAuth = localStorage.getItem('ea_authUser');
-      if (savedAuth) {
-        const u = JSON.parse(savedAuth);
-        setAuthUser(u);
-        setRole(u.role === 'student' ? 'student' : 'mentor');
-      }
-    } catch {}
-
     const fetchData = async () => {
       try {
+        const meRes = await fetch('/api/auth/me');
+        if (meRes.ok) {
+          const s = await meRes.json();
+          let name = s.role === 'mentor' ? 'Mentor' : 'Student';
+          try {
+            const saved = localStorage.getItem('ea_authName');
+            if (saved) name = saved;
+          } catch {}
+          const user: AuthUser = s.role === 'mentor'
+            ? { role: 'mentor', name }
+            : { role: 'student', studentId: s.id, name };
+          setAuthUser(user);
+          setRole(s.role);
+        } else {
+          setAuthUser(null);
+        }
+
         const [histRes, studRes] = await Promise.all([
           fetch('/api/history'),
           fetch('/api/students')
@@ -108,13 +116,14 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
   const login = (user: AuthUser) => {
     setAuthUser(user);
     setRole(user.role === 'student' ? 'student' : 'mentor');
-    localStorage.setItem('ea_authUser', JSON.stringify(user));
+    localStorage.setItem('ea_authName', user.name);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
     setAuthUser(null);
     setRole('mentor');
-    localStorage.removeItem('ea_authUser');
+    localStorage.removeItem('ea_authName');
   };
 
   const fetchStudentDetail = async (id: string, opts?: { force?: boolean }) => {
