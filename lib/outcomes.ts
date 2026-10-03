@@ -1,11 +1,35 @@
 /**
  * lib/outcomes.ts
  *
- * Pure function: derive an OutcomeComparisonData object from a StudentDetail record.
+ * Pure functions: derive OutcomeComparisonData from a StudentDetail record.
  * No store access, no side effects — runs in both client and server contexts.
  */
 
 import type { StudentDetail, OutcomeComparisonData } from './types';
+
+/**
+ * Count the total number of data points (attendance weeks + term tests) currently
+ * on the student record. Stored at assignment time as dataPointsAtAssign so we
+ * know whether any new data has arrived since the intervention started.
+ */
+export function countDataPoints(student: StudentDetail): number {
+  return (student.attendanceHistory ?? []).length + (student.termTests ?? []).length;
+}
+
+/**
+ * Returns true when data has arrived after the intervention was assigned.
+ * Legacy plans without dataPointsAtAssign are treated as having new data
+ * (we don't know when they were created, so we show whatever we have).
+ */
+export function hasNewDataSinceAssign(student: StudentDetail): boolean {
+  const intervention = student.activeIntervention;
+  if (!intervention) return false;
+  if (typeof intervention.dataPointsAtAssign !== 'number') {
+    // Legacy plan: count as having new data rather than showing __awaiting__ forever
+    return countDataPoints(student) > 0;
+  }
+  return countDataPoints(student) > intervention.dataPointsAtAssign;
+}
 
 /**
  * Returns a live outcome comparison derived entirely from the student document.
@@ -29,24 +53,22 @@ export function getOutcomeFromStudent(student: StudentDetail): OutcomeComparison
   else if (scoreDelta > 2) outcome = 'Worsening';
   else outcome = 'No Change';
 
-  // Find the most recent data date
-  let latestDataDate = intervention.assignedDate;
-  let hasNewData = false;
-
-  if ((student.attendanceHistory ?? []).length > 0) {
-    hasNewData = true;
-    latestDataDate = 'latest-upload';
-  }
-  for (const test of (student.termTests ?? [])) {
-    if (test.date && test.date > latestDataDate) {
-      latestDataDate = test.date;
-      hasNewData = true;
+  // Determine checkpoint date using dataPointsAtAssign for precision
+  let checkpointDate: string;
+  if (!hasNewDataSinceAssign(student)) {
+    checkpointDate = '__awaiting__';
+  } else {
+    // Find the most recent data date
+    let latestDataDate = intervention.assignedDate;
+    for (const h of (student.attendanceHistory ?? [])) {
+      // attendance entries don't carry a date field, use today
+      latestDataDate = new Date().toISOString().split('T')[0];
     }
+    for (const test of (student.termTests ?? [])) {
+      if (test.date && test.date > latestDataDate) latestDataDate = test.date;
+    }
+    checkpointDate = latestDataDate;
   }
-
-  const checkpointDate = hasNewData
-    ? (latestDataDate === 'latest-upload' ? new Date().toISOString().split('T')[0] : latestDataDate)
-    : '__awaiting__';
 
   return {
     studentId: student.studentId,

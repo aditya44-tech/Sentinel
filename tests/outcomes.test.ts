@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert';
-import { getOutcomeFromStudent } from '../lib/outcomes';
+import { getOutcomeFromStudent, countDataPoints, hasNewDataSinceAssign } from '../lib/outcomes';
 import type { StudentDetail } from '../lib/types';
 
 const BASE: StudentDetail = {
@@ -83,4 +83,66 @@ test('outcome: missing baseline falls back to current score (delta = 0)', () => 
   assert.strictEqual(outcome.baselineScore, 42);
   assert.strictEqual(outcome.scoreDelta, 0);
   assert.strictEqual(outcome.outcome, 'No Change');
+});
+
+test('countDataPoints counts attendance weeks + term tests', () => {
+  const s = {
+    ...BASE,
+    attendanceHistory: [
+      { week: 'Week 1', percentage: 80, isUploaded: true },
+      { week: 'Week 2', percentage: 75, isUploaded: true },
+    ],
+    termTests: [{ testName: 'Unit Test 1', score: 70, maxMarks: 100, date: '2026-09-10' }],
+  };
+  assert.strictEqual(countDataPoints(s), 3);
+});
+
+test('hasNewDataSinceAssign: true when current > dataPointsAtAssign', () => {
+  const s = {
+    ...BASE,
+    attendanceHistory: [{ week: 'Week 1', percentage: 80, isUploaded: true }],
+    activeIntervention: { ...BASE.activeIntervention!, dataPointsAtAssign: 0 },
+  };
+  assert.strictEqual(hasNewDataSinceAssign(s), true);
+});
+
+test('hasNewDataSinceAssign: false when count unchanged since assignment', () => {
+  const s = {
+    ...BASE,
+    attendanceHistory: [{ week: 'Week 1', percentage: 80, isUploaded: true }],
+    activeIntervention: { ...BASE.activeIntervention!, dataPointsAtAssign: 1 },
+  };
+  assert.strictEqual(hasNewDataSinceAssign(s), false);
+});
+
+test('hasNewDataSinceAssign: legacy plan (no dataPointsAtAssign) with data → true', () => {
+  const s = {
+    ...BASE,
+    attendanceHistory: [{ week: 'Week 1', percentage: 80, isUploaded: true }],
+    activeIntervention: { ...BASE.activeIntervention!, dataPointsAtAssign: undefined as any },
+  };
+  assert.strictEqual(hasNewDataSinceAssign(s), true);
+});
+
+test('outcome: awaiting when dataPointsAtAssign equals current count', () => {
+  const s = {
+    ...BASE,
+    attendanceHistory: [{ week: 'Week 1', percentage: 80, isUploaded: true }],
+    activeIntervention: { ...BASE.activeIntervention!, dataPointsAtAssign: 1 },
+  };
+  const outcome = getOutcomeFromStudent(s)!;
+  assert.strictEqual(outcome.checkpointDate, '__awaiting__');
+});
+
+test('outcome: not awaiting when new data arrived after assignment', () => {
+  const s = {
+    ...BASE,
+    attendanceHistory: [
+      { week: 'Week 1', percentage: 80, isUploaded: true },
+      { week: 'Week 2', percentage: 75, isUploaded: true },
+    ],
+    activeIntervention: { ...BASE.activeIntervention!, dataPointsAtAssign: 1 },
+  };
+  const outcome = getOutcomeFromStudent(s)!;
+  assert.notStrictEqual(outcome.checkpointDate, '__awaiting__');
 });

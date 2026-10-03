@@ -491,136 +491,81 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleInterventionAssigned = async (payload: MentorActionPayload) => {
-    const status = payload.status || 'Active';
+    const status = (payload.status || 'Active') as import('@/lib/types').InterventionStatus;
 
-    if (status === 'Notified') {
-      // Parent/Guardian Notified is a timestamped log only.
-      await fetch(`/api/students/${payload.studentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationLog: payload })
-      });
-      return;
-    }
+    // Single server call — handles both Notified log-append and real interventions
+    const res = await fetch('/api/interventions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, baselineRiskScore: detailsMap[payload.studentId]?.riskScore }),
+    });
+    if (!res.ok) { console.error('Failed to assign intervention', await res.text()); return; }
 
-    // Register the intervention server-side first: it is the authority for the
-    // baseline risk score, so the outcome store and the student record can never
-    // disagree about what "before" means.
-    // We always pass the client-side score in the payload so the server uses
-    // the EXACT score visible in the UI at assignment time, even if the server
-    // state is stale after a CSV upload (fire-and-forget sync race).
-    const clientSideScore = detailsMap[payload.studentId]?.riskScore;
-    let baselineRiskScore = clientSideScore;
-    try {
-      const res = await fetch('/api/interventions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, baselineRiskScore: clientSideScore })
-      });
-      const data = await res.json();
-      if (typeof data?.baselineRiskScore === 'number') {
-        baselineRiskScore = data.baselineRiskScore;
-      }
-    } catch (e) {
-      console.error('Failed to register intervention', e);
-    }
+    if (status === 'Notified') return; // log-only, no local state change needed
 
-    // Last resort only if the student is unknown to both the cache and the server
-    const resolvedBaseline = baselineRiskScore ?? 0;
+    const data = await res.json();
+    const activeIntervention: import('@/lib/types').StudentActiveIntervention =
+      data.activeIntervention ?? {
+        type: payload.type,
+        details: payload.details,
+        status,
+        assignedDate: payload.startDate,
+        baselineRiskScore: data.baselineRiskScore ?? detailsMap[payload.studentId]?.riskScore ?? 0,
+      };
 
-    const activeIntervention: import('@/lib/types').StudentActiveIntervention = {
-      type: payload.type,
-      details: payload.details,
-      status: status as import('@/lib/types').InterventionStatus,
-      assignedDate: payload.startDate,
-      baselineRiskScore: resolvedBaseline,
-    };
-
-    // Update local client state immediately
-    setStudents(prev => prev.map(s => s.studentId === payload.studentId ? { ...s, interventionStatus: status as import('@/lib/types').InterventionStatus } : s));
+    setStudents(prev => prev.map(s => s.studentId === payload.studentId ? { ...s, interventionStatus: status } : s));
     setDetailsMap(prev => ({
       ...prev,
-      [payload.studentId]: {
-        ...prev[payload.studentId],
-        interventionStatus: status as import('@/lib/types').InterventionStatus,
-        activeIntervention
-      }
+      [payload.studentId]: { ...prev[payload.studentId], interventionStatus: status, activeIntervention },
     }));
-
-    // Persist the intervention (with its frozen baseline) on the student record
-    await fetch(`/api/students/${payload.studentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ interventionStatus: status, activeIntervention })
-    });
   };
 
   const handleResolveIntervention = async (studentId: string) => {
+    const res = await fetch(`/api/interventions/${studentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'resolve' }),
+    });
+    if (!res.ok) { console.error('Failed to resolve intervention', await res.text()); return; }
+    const data = await res.json();
+
     setStudents(prev => prev.map(s => s.studentId === studentId ? { ...s, interventionStatus: 'Resolved' } : s));
     setDetailsMap(prev => {
       const existing = prev[studentId];
       if (!existing) return prev;
-      return {
-        ...prev,
-        [studentId]: {
-          ...existing,
-          interventionStatus: 'Resolved',
-          activeIntervention: existing.activeIntervention ? { ...existing.activeIntervention, status: 'Resolved' as import('@/lib/types').InterventionStatus } : null
-        }
+      const updated = data.student ?? {
+        ...existing,
+        interventionStatus: 'Resolved' as import('@/lib/types').InterventionStatus,
+        activeIntervention: existing.activeIntervention
+          ? { ...existing.activeIntervention, status: 'Resolved' as import('@/lib/types').InterventionStatus }
+          : null,
       };
+      return { ...prev, [studentId]: updated };
     });
-
-    // Close the intervention itself, not just the summary flag — otherwise the
-    // outcome page and the student portal keep showing it as active.
-    await fetch(`/api/interventions/${studentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'Resolved' })
-    }).catch((e) => console.error('Failed to resolve intervention', e));
-
-    await fetch(`/api/students/${studentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        interventionStatus: 'Resolved',
-        ...(detailsMap[studentId]?.activeIntervention
-          ? { activeIntervention: { ...detailsMap[studentId]!.activeIntervention, status: 'Resolved' } }
-          : {}),
-      })
-    }).catch((e) => console.error('Failed to update student record on resolve', e));
   };
 
   const handleReopenIntervention = async (studentId: string) => {
+    const res = await fetch(`/api/interventions/${studentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reopen' }),
+    });
+    if (!res.ok) { console.error('Failed to reopen intervention', await res.text()); return; }
+    const data = await res.json();
+
     setStudents(prev => prev.map(s => s.studentId === studentId ? { ...s, interventionStatus: 'Active' } : s));
     setDetailsMap(prev => {
       const existing = prev[studentId];
       if (!existing) return prev;
-      return {
-        ...prev,
-        [studentId]: {
-          ...existing,
-          interventionStatus: 'Active',
-          activeIntervention: existing.activeIntervention ? { ...existing.activeIntervention, status: 'Active' as import('@/lib/types').InterventionStatus } : null
-        }
+      const updated = data.student ?? {
+        ...existing,
+        interventionStatus: 'Active' as import('@/lib/types').InterventionStatus,
+        activeIntervention: existing.activeIntervention
+          ? { ...existing.activeIntervention, status: 'Active' as import('@/lib/types').InterventionStatus }
+          : null,
       };
+      return { ...prev, [studentId]: updated };
     });
-
-    await fetch(`/api/interventions/${studentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'Active' })
-    }).catch((e) => console.error('Failed to reopen intervention', e));
-
-    await fetch(`/api/students/${studentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        interventionStatus: 'Active',
-        ...(detailsMap[studentId]?.activeIntervention
-          ? { activeIntervention: { ...detailsMap[studentId]!.activeIntervention, status: 'Active' } }
-          : {}),
-      })
-    }).catch((e) => console.error('Failed to update student record on reopen', e));
   };
 
   if (!isClient) return null;
