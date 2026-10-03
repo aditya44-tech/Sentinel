@@ -10,6 +10,8 @@ import {
   Tooltip,
   ReferenceLine,
 } from 'recharts';
+import { weekNum } from '@/lib/weeks';
+import { padWeeklyData } from '@/lib/chartHelpers';
 
 interface TrendChartProps {
   data: Record<string, unknown>[];
@@ -24,6 +26,7 @@ interface TrendChartProps {
   secondThresholdLabel?: string;
   height?: number;
   yDomain?: [number, number];
+  totalWeeks?: number;
 }
 
 interface CustomTooltipProps {
@@ -50,11 +53,7 @@ const CustomNeoTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label
 
 /** Extract numeric part from a week label: "Week 3" -> 3, "Initial" -> 0 */
 function weekSortKey(label: string): number {
-  if (!label) return 999;
-  const lower = label.toLowerCase();
-  if (lower === 'initial') return 0;
-  const match = lower.match(/\d+/);
-  return match ? parseInt(match[0], 10) : 999;
+  return weekNum(label);
 }
 
 export const TrendChart: React.FC<TrendChartProps> = ({
@@ -70,6 +69,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   secondThresholdLabel,
   height = 240,
   yDomain,
+  totalWeeks,
 }) => {
   const sortedData = [...data].sort((a, b) => {
     const aLabel = String(a[xKey] ?? '');
@@ -77,18 +77,14 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     return weekSortKey(aLabel) - weekSortKey(bLabel);
   });
 
-  // Always pad the attendance chart to show all 4 weeks on the X-axis.
+  // Always pad the attendance chart to show all weeks on the X-axis.
   // Weeks with no real data get a null value so the line stops at the last
   // real reading while all week labels remain visible.
   const isWeeklyAttendance = xKey === 'displayWeek' || xKey === 'week';
   const paddedData: Record<string, unknown>[] = React.useMemo(() => {
     if (!isWeeklyAttendance) return sortedData;
-    const ALL_WEEKS = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-    return ALL_WEEKS.map((weekLabel) => {
-      const existing = sortedData.find((d) => String(d[xKey]) === weekLabel);
-      return existing ?? { [xKey]: weekLabel, [yKey]: null };
-    });
-  }, [sortedData, xKey, yKey, isWeeklyAttendance]);
+    return padWeeklyData(sortedData, xKey, yKey, totalWeeks);
+  }, [sortedData, xKey, yKey, isWeeklyAttendance, totalWeeks]);
 
   const displayData = isWeeklyAttendance ? paddedData : sortedData;
 

@@ -4,6 +4,7 @@ import { RiskBadge } from '@/components/RiskBadge';
 import { TrendChart } from '@/components/TrendChart';
 import { FactorBreakdownList } from '@/components/FactorBreakdownList';
 import { computeRiskScore, RawStudentData } from '@/lib/riskEngine';
+import { weekNum } from '@/lib/weeks';
 import {
   ArrowLeft,
   Sparkles,
@@ -368,32 +369,36 @@ export const StudentDetailView: React.FC<StudentDetailViewProps> = ({
               </h3>
             </div>
             <span className="text-xs font-mono font-bold px-1.5 py-0.5 bg-red-100 text-[#D62828] border border-[#0D0D0D]">
-              {student.attendanceHistory.length}/4 Weeks
+              {(() => {
+                const weeks = (student.attendanceHistory ?? []).filter(h => weekNum(h.week) > 0);
+                const totalWeeks = Math.max(4, ...weeks.map(w => weekNum(w.week)));
+                return `${weeks.length}/${totalWeeks} Weeks`;
+              })()}
             </span>
           </div>
           <p className="text-xs text-neutral-600 mb-4 font-medium">
             Bi-weekly institutional sensor &amp; LMS participation logs.
           </p>
-          <TrendChart
-            data={(student.attendanceHistory || [])
+          {(() => {
+            const weeks = (student.attendanceHistory ?? [])
+              .filter(h => weekNum(h.week) > 0)
               .slice()
-              .sort((a, b) => {
-                const aNum = parseInt((a.week || '').replace(/\D/g, ''), 10) || 0;
-                const bNum = parseInt((b.week || '').replace(/\D/g, ''), 10) || 0;
-                return aNum - bNum;
-              })
-              .map((item, idx) => ({
-                ...item,
-                displayWeek: `Week ${idx + 1}`,
-              })) as unknown as Record<string, unknown>[]}
-            xKey="displayWeek"
-            yKey="percentage"
-            unit="%"
-            lineColor="#D62828"
-            targetThreshold={75}
-            thresholdLabel="Min 75%"
-            yDomain={[0, 100]}
-          />
+              .sort((a, b) => weekNum(a.week) - weekNum(b.week));
+            const totalWeeks = Math.max(4, ...weeks.map(w => weekNum(w.week)));
+            return (
+              <TrendChart
+                data={weeks as unknown as Record<string, unknown>[]}
+                xKey="week"
+                yKey="percentage"
+                unit="%"
+                lineColor="#D62828"
+                targetThreshold={75}
+                thresholdLabel="Min 75%"
+                yDomain={[0, 100]}
+                totalWeeks={totalWeeks}
+              />
+            );
+          })()}
         </div>
 
         {/* Term Test Trend Chart */}
