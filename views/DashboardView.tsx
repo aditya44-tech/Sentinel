@@ -4,6 +4,7 @@ import { StudentSummary, UploadLog } from '@/lib/types';
 import { StudentTableRow } from '@/components/StudentTableRow';
 import { StudentCard } from '@/components/StudentCard';
 import { normalizeWeek } from '@/lib/weeks';
+import { parseCounselingCSV, parseContactsCSV } from '@/lib/counseling';
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -153,6 +154,73 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           }
           if (uploadType === 'Backlogs' && !('backlogCount' in firstRow)) {
             setUploadMessage({ type: 'error', text: 'Invalid CSV format for Backlog. Required columns: studentId, backlogCount.' });
+            return;
+          }
+
+          // ── Counseling-specific pre-processing ──
+          if (uploadType === 'InitialCounseling') {
+            // Run through the pure parser — recomputes scores, validates answer text
+            const parsed = parseCounselingCSV(data, new Set<string>());
+            if (parsed.errors.length > 0) {
+              const firstErr = parsed.errors[0];
+              setUploadMessage({
+                type: 'error',
+                text: `Row ${firstErr.row} / ${firstErr.field}: ${firstErr.message}`,
+              });
+              return;
+            }
+            if (parsed.records.length === 0) {
+              setUploadMessage({ type: 'error', text: 'No valid counseling rows found in the CSV.' });
+              return;
+            }
+            // Replace raw rows with fully-scored CounselingRecord objects
+            if (onDataUpload) {
+              setIsUploading(true);
+              onDataUpload(parsed.records, finalWeekLabel, uploadType, uploadedFile.name)
+                .then((res) => {
+                  setIsUploading(false);
+                  if (res.success) {
+                    setUploadMessage({ type: 'success', text: `Counseling upload successful! ${res.updatedCount} records processed.` });
+                    setUploadedFile(null);
+                  }
+                })
+                .catch((err) => {
+                  setIsUploading(false);
+                  setUploadMessage({ type: 'error', text: `Upload failed: ${err?.message || 'unknown error'}` });
+                });
+            }
+            return;
+          }
+
+          // ── Contacts-specific pre-processing ──
+          if (uploadType === 'Contacts') {
+            const parsed = parseContactsCSV(data, new Set<string>());
+            // Contacts: report validation errors as warnings but don't block
+            const emailPhoneErrors = parsed.errors.filter(e => e.field !== 'studentId');
+            if (emailPhoneErrors.length > 0) {
+              const errMsg = emailPhoneErrors.slice(0, 3).map(e => `Row ${e.row} ${e.field}: ${e.message}`).join('; ');
+              setUploadMessage({ type: 'error', text: `Validation issues: ${errMsg}` });
+              return;
+            }
+            if (parsed.records.length === 0) {
+              setUploadMessage({ type: 'error', text: 'No valid contact rows found in the CSV.' });
+              return;
+            }
+            if (onDataUpload) {
+              setIsUploading(true);
+              onDataUpload(parsed.records, finalWeekLabel, uploadType, uploadedFile.name)
+                .then((res) => {
+                  setIsUploading(false);
+                  if (res.success) {
+                    setUploadMessage({ type: 'success', text: `Contacts upload successful! ${res.updatedCount} records saved.` });
+                    setUploadedFile(null);
+                  }
+                })
+                .catch((err) => {
+                  setIsUploading(false);
+                  setUploadMessage({ type: 'error', text: `Upload failed: ${err?.message || 'unknown error'}` });
+                });
+            }
             return;
           }
         } else {
@@ -330,6 +398,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </button>
                       ))}
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[#A855F7] self-center mr-1">Counseling</span>
+                      <button
+                        onClick={() => { setUploadType('InitialCounseling'); setUploadedFile(null); setUploadMessage(null); }}
+                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-[#A855F7] transition-colors shadow-[2px_2px_0px_#A855F7] ${uploadType === 'InitialCounseling' ? 'bg-[#A855F7] text-white' : 'bg-white text-[#A855F7] hover:bg-purple-50'}`}
+                        title="CS_InitialCounseling.csv — columns: studentId, name, counselingDate, Q1…Q5 answer columns, Q1_Score…Q5_Score, studentSaid, mentorNotes, otherText"
+                      >
+                        Initial Counseling
+                      </button>
+                      <button
+                        onClick={() => { setUploadType('Contacts'); setUploadedFile(null); setUploadMessage(null); }}
+                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-[#A855F7] transition-colors shadow-[2px_2px_0px_#A855F7] ${uploadType === 'Contacts' ? 'bg-[#A855F7] text-white' : 'bg-white text-[#A855F7] hover:bg-purple-50'}`}
+                        title="CS_Contacts.csv — columns: studentId, name, studentEmail, studentPhone, parentName, parentPhone, parentEmail"
+                      >
+                        Contacts
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="flex items-center gap-3 w-full border-t-2 border-neutral-300 pt-3 mt-1">
@@ -374,6 +459,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </button>
                   )}
                 </div>
+
+                {/* Format hints for counseling types */}
+                {(uploadType === 'InitialCounseling' || uploadType === 'Contacts') && (
+                  <div className="mt-2 p-3 border-2 border-[#A855F7] bg-[#F0E6FF] text-xs">
+                    <p className="font-black uppercase tracking-wider text-[#A855F7] mb-1">
+                      {uploadType === 'InitialCounseling' ? 'CS_InitialCounseling.csv — Required columns' : 'CS_Contacts.csv — Required columns'}
+                    </p>
+                    {uploadType === 'InitialCounseling' ? (
+                      <ul className="font-mono text-neutral-700 space-y-0.5 list-disc list-inside">
+                        <li>studentId, name, counselingDate</li>
+                        <li>Q1_Why did you take admission in this course? <span className="text-neutral-400">(9 valid options)</span></li>
+                        <li>Q2_How motivated are you… / Q3_How connected… / Q4_How clear… / Q5_How stressed…</li>
+                        <li>Q1_Score … Q5_Score <span className="text-neutral-400">(auto-recomputed — CSV values ignored)</span></li>
+                        <li>studentSaid, mentorNotes, otherText</li>
+                      </ul>
+                    ) : (
+                      <ul className="font-mono text-neutral-700 space-y-0.5 list-disc list-inside">
+                        <li>studentId, name</li>
+                        <li>studentEmail, studentPhone</li>
+                        <li>parentName, parentPhone, parentEmail</li>
+                        <li>Phone format: <span className="text-neutral-500">+91 XXXXX XXXXX</span></li>
+                      </ul>
+                    )}
+                    <p className="mt-1.5 text-neutral-500 font-medium">
+                      Sample files are in <span className="font-mono">data/</span> folder. Hover the button above for column details.
+                    </p>
+                  </div>
+                )}
+
               </div>
             </div>
 
