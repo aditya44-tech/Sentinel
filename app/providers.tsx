@@ -101,8 +101,8 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
         }
 
         const [histRes, studRes] = await Promise.all([
-          fetch('/api/history'),
-          fetch('/api/students')
+          fetch('/api/history', { cache: 'no-store' }),
+          fetch('/api/students', { cache: 'no-store' })
         ]);
         if (histRes.ok) setUploadHistory(await histRes.json());
         if (studRes.ok) setStudents(await studRes.json());
@@ -129,7 +129,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
   const fetchStudentDetail = async (id: string, opts?: { force?: boolean }) => {
     if (!opts?.force && detailsMap[id]) return detailsMap[id];
     try {
-      const res = await fetch(`/api/students/${id}`);
+      const res = await fetch(`/api/students/${id}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.student) {
         setDetailsMap(prev => ({ ...prev, [id]: data.student }));

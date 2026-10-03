@@ -209,6 +209,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               isAnimationActive={true}
               label={singlePoint ? {
                 position: 'top',
+                offset: 12,
                 fill: lineColor,
                 fontSize: 12,
                 fontWeight: 'bold',
