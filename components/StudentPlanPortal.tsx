@@ -162,15 +162,15 @@ export const StudentPlanPortal: React.FC<StudentPlanPortalProps> = ({
 
       {/* Welfare cell contact — shown when student needs support */}
       {needsWelfare && (
-        <div className="p-4 border-2 border-[#A855F7] bg-[#F0E6FF]">
-          <span className="text-[11px] font-black uppercase tracking-wider text-purple-700 block mb-2">
+        <div className="p-4 border-2 border-[#0D0D0D] bg-neutral-100">
+          <span className="text-[11px] font-black uppercase tracking-wider text-[#0D0D0D] block mb-2">
             🤝 Welfare Cell Contact
           </span>
           <p className="font-black text-sm text-[#0D0D0D] mb-2">{WELFARE_CELL.name}</p>
           <div className="flex flex-wrap gap-2">
             <a
               href={`tel:${WELFARE_CELL.phone}`}
-              className="neo-btn px-3 py-1.5 bg-[#A855F7] text-white text-xs font-black uppercase tracking-wider"
+              className="neo-btn px-3 py-1.5 bg-[#0D0D0D] text-white text-xs font-black uppercase tracking-wider"
             >
               📞 Call
             </a>

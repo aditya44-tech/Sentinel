@@ -76,17 +76,17 @@ export const FactorBreakdownList: React.FC<FactorBreakdownListProps> = ({ factor
           {counseling && (
             <>
               {/* Counseling section sub-header */}
-              <div className="grid grid-cols-12 bg-[#F0E6FF] border-t-[3px] border-[#A855F7] p-3 items-center">
-                <div className="col-span-4 md:col-span-3 font-black text-xs uppercase tracking-wider text-[#A855F7] flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 bg-[#A855F7] border border-[#A855F7] shrink-0" />
+              <div className="grid grid-cols-12 bg-neutral-100 border-t-[3px] border-[#0D0D0D] p-3 items-center">
+                <div className="col-span-4 md:col-span-3 font-black text-xs uppercase tracking-wider text-[#0D0D0D] flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-[#0D0D0D] border border-[#0D0D0D] shrink-0" />
                   Counseling
                 </div>
                 <div className="col-span-2 md:col-span-2 text-center">
-                  <span className="inline-block font-mono font-black text-xs px-2 py-0.5 border-[2px] border-[#A855F7] bg-[#A855F7] text-white">
+                  <span className="inline-block font-mono font-black text-xs px-2 py-0.5 border-[2px] border-[#0D0D0D] bg-[#0D0D0D] text-white">
                     ×{counseling.scoreMultiplier.toFixed(2)}
                   </span>
                 </div>
-                <div className="col-span-6 md:col-span-7 text-xs text-[#A855F7] font-bold flex flex-wrap items-center gap-2">
+                <div className="col-span-6 md:col-span-7 text-xs text-[#0D0D0D] font-bold flex flex-wrap items-center gap-2">
                   <span>Score {counseling.counselingRiskScore}/100</span>
                   <span className={`px-1.5 py-0.5 text-[10px] font-black uppercase border ${
                     counseling.counselingLevel === 'High' ? 'bg-[#D62828] text-white border-[#D62828]'
@@ -109,17 +109,17 @@ export const FactorBreakdownList: React.FC<FactorBreakdownListProps> = ({ factor
                 return (
                   <div
                     key={ans.questionId}
-                    className="grid grid-cols-12 p-3 items-start bg-[#FAF5FF] hover:bg-[#F0E6FF] transition-colors border-t border-purple-100"
+                    className="grid grid-cols-12 p-3 items-start bg-white hover:bg-neutral-50 transition-colors border-t-2 border-dashed border-neutral-300"
                   >
                     {/* Factor name */}
                     <div className="col-span-4 md:col-span-3 font-bold text-sm text-[#0D0D0D] flex items-start gap-2">
                       <span
                         className={`w-2.5 h-2.5 mt-1 border border-[#0D0D0D] shrink-0 ${
-                          isRisky ? 'bg-[#A855F7]' : 'bg-neutral-200'
+                          isRisky ? 'bg-[#0D0D0D]' : 'bg-neutral-200'
                         }`}
                       />
                       <span className="leading-tight">
-                        <span className="text-[10px] font-black text-[#A855F7] block uppercase tracking-wider">
+                        <span className="text-[10px] font-black text-[#0D0D0D] block uppercase tracking-wider">
                           {ans.questionId}
                         </span>
                         {Q_QUESTION_LABEL[ans.questionId] ?? ans.questionId}
@@ -131,7 +131,7 @@ export const FactorBreakdownList: React.FC<FactorBreakdownListProps> = ({ factor
                       <span
                         className={`inline-block font-mono font-black text-xs px-2 py-0.5 border-[2px] ${
                           isRisky
-                            ? 'border-[#A855F7] bg-[#A855F7] text-white'
+                            ? 'border-[#0D0D0D] bg-[#0D0D0D] text-white'
                             : 'border-neutral-300 bg-neutral-100 text-neutral-400'
                         }`}
                       >
@@ -158,12 +158,12 @@ export const FactorBreakdownList: React.FC<FactorBreakdownListProps> = ({ factor
               })}
 
               {/* Counseling summary / total row */}
-              <div className="grid grid-cols-12 p-3 items-center bg-[#A855F7]">
+              <div className="grid grid-cols-12 p-3 items-center bg-[#0D0D0D]">
                 <div className="col-span-4 md:col-span-3 font-black text-xs uppercase tracking-wider text-white">
                   Counseling Total
                 </div>
                 <div className="col-span-2 md:col-span-2 text-center">
-                  <span className="inline-block font-mono font-black text-sm px-2 py-0.5 bg-white text-[#A855F7] border-2 border-white">
+                  <span className="inline-block font-mono font-black text-sm px-2 py-0.5 bg-white text-[#0D0D0D] border-2 border-white">
                     {counseling.counselingRiskScore}
                   </span>
                 </div>

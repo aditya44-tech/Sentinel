@@ -55,13 +55,6 @@ const StudentSchema = new mongoose.Schema({
   }],
   suggestedAction: { type: String },
   aiExplanation: { type: String },
-  
-  counseling: { type: mongoose.Schema.Types.Mixed },
-  contactInfo: { type: mongoose.Schema.Types.Mixed },
-  contactLog: [mongoose.Schema.Types.Mixed],
-  planResponse: { type: mongoose.Schema.Types.Mixed },
-  academicScore: { type: Number },
-  scoreBreakdownNote: { type: String },
 
   activeIntervention: {
     type: { type: String },
@@ -72,7 +65,15 @@ const StudentSchema = new mongoose.Schema({
     baselineRiskScore: { type: Number },
     dataPointsAtAssign: { type: Number }
   },
-  notificationLog: [mongoose.Schema.Types.Mixed]
+  notificationLog: [mongoose.Schema.Types.Mixed],
+  
+  // Counseling & Contacts
+  counseling: { type: mongoose.Schema.Types.Mixed },
+  contactInfo: { type: mongoose.Schema.Types.Mixed },
+  contactLog: [mongoose.Schema.Types.Mixed],
+  planResponse: { type: mongoose.Schema.Types.Mixed },
+  academicScore: { type: Number },
+  scoreBreakdownNote: { type: String }
 }, { timestamps: true });
 
 export const Student = mongoose.models.Student || mongoose.model('Student', StudentSchema);

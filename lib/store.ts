@@ -68,9 +68,7 @@ export async function upsertStudents(list: unknown) {
 }
 
 const PATCHABLE = ['interventionStatus', 'activeIntervention', 'aiExplanation', 'riskScore', 'riskLevel',
-                   'contributingFactors', 'suggestedAction', 'submissionRate', 
-                   'counseling', 'contactInfo', 'contactLog', 'planResponse', 
-                   'academicScore', 'scoreBreakdownNote'] as const;
+                   'contributingFactors', 'suggestedAction', 'submissionRate'] as const;
 
 export async function patchStudent(id: string, patch: Record<string, any>) {
   const studentId = cleanId(id);

@@ -399,17 +399,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ))}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-[#A855F7] self-center mr-1">Counseling</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[#0D0D0D] self-center mr-1">Counseling</span>
                       <button
                         onClick={() => { setUploadType('InitialCounseling'); setUploadedFile(null); setUploadMessage(null); }}
-                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-[#A855F7] transition-colors shadow-[2px_2px_0px_#A855F7] ${uploadType === 'InitialCounseling' ? 'bg-[#A855F7] text-white' : 'bg-white text-[#A855F7] hover:bg-purple-50'}`}
+                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-[#0D0D0D] transition-colors shadow-[2px_2px_0px_#0D0D0D] ${uploadType === 'InitialCounseling' ? 'bg-[#0D0D0D] text-white' : 'bg-white text-[#0D0D0D] hover:bg-neutral-100'}`}
                         title="CS_InitialCounseling.csv — columns: studentId, name, counselingDate, Q1…Q5 answer columns, Q1_Score…Q5_Score, studentSaid, mentorNotes, otherText"
                       >
                         Initial Counseling
                       </button>
                       <button
                         onClick={() => { setUploadType('Contacts'); setUploadedFile(null); setUploadMessage(null); }}
-                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-[#A855F7] transition-colors shadow-[2px_2px_0px_#A855F7] ${uploadType === 'Contacts' ? 'bg-[#A855F7] text-white' : 'bg-white text-[#A855F7] hover:bg-purple-50'}`}
+                        className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-[#0D0D0D] transition-colors shadow-[2px_2px_0px_#0D0D0D] ${uploadType === 'Contacts' ? 'bg-[#0D0D0D] text-white' : 'bg-white text-[#0D0D0D] hover:bg-neutral-100'}`}
                         title="CS_Contacts.csv — columns: studentId, name, studentEmail, studentPhone, parentName, parentPhone, parentEmail"
                       >
                         Contacts
@@ -462,8 +462,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 {/* Format hints for counseling types */}
                 {(uploadType === 'InitialCounseling' || uploadType === 'Contacts') && (
-                  <div className="mt-2 p-3 border-2 border-[#A855F7] bg-[#F0E6FF] text-xs">
-                    <p className="font-black uppercase tracking-wider text-[#A855F7] mb-1">
+                  <div className="mt-2 p-3 border-2 border-[#0D0D0D] bg-neutral-100 text-xs">
+                    <p className="font-black uppercase tracking-wider text-[#0D0D0D] mb-1">
                       {uploadType === 'InitialCounseling' ? 'CS_InitialCounseling.csv — Required columns' : 'CS_Contacts.csv — Required columns'}
                     </p>
                     {uploadType === 'InitialCounseling' ? (

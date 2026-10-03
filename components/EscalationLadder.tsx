@@ -11,7 +11,7 @@ const STEP_COLORS: Record<number, string> = {
   2: 'bg-[#FFF8E0] border-[#F4C430]',
   3: 'bg-[#FFF3E0] border-[#FB923C]',
   4: 'bg-[#FDECEA] border-[#EF4444]',
-  5: 'bg-[#F0E6FF] border-[#A855F7]',
+  5: 'bg-[#D62828] border-[#D62828] text-white',
 };
 
 interface EscalationLadderProps {
