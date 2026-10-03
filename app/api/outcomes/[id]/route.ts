@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOutcome } from '@/lib/db';
+import { handle, HttpError } from '@/lib/http';
+import * as store from '@/lib/store';
+import { getOutcomeFromStudent } from '@/lib/outcomes';
 
-// GET /api/outcomes/[id]: get before/after outcome comparison for a student
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const outcome = getOutcome(id);
+export const dynamic = 'force-dynamic';
 
-  if (!outcome) {
-    return NextResponse.json({ error: `No outcome data for student ${id}` }, { status: 404 });
-  }
+/** GET /api/outcomes/[id] — derive the outcome comparison from the student record */
+export const GET = handle(async (_req: Request, { params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await (params as any);
+  const student = await store.getStudent(id);
+  if (!student) throw new HttpError(404, `Student ${id} not found`);
+
+  const outcome = getOutcomeFromStudent(student);
+  if (!outcome) throw new HttpError(404, `No outcome data for student ${id}`);
 
   return NextResponse.json({ outcome });
-}
+});
