@@ -53,12 +53,7 @@ export async function DELETE() {
 
     const { isDbConnected } = await import('@/lib/dbConnect');
     if (await isDbConnected()) {
-      try {
-        const { Outcome } = await import('@/lib/models');
-        await Outcome.deleteMany({});
-      } catch (err: any) {
-        console.warn("MongoDB Outcome deleteMany failed:", err.message);
-      }
+      // Intentionally empty: interventions are now on the student document and reset clears students
     }
     return NextResponse.json({ success: true });
   } catch (error: any) {

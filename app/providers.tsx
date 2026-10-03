@@ -528,10 +528,10 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
     // Last resort only if the student is unknown to both the cache and the server
     const resolvedBaseline = baselineRiskScore ?? 0;
 
-    const activeIntervention = {
+    const activeIntervention: import('@/lib/types').StudentActiveIntervention = {
       type: payload.type,
       details: payload.details,
-      status: status,
+      status: status as import('@/lib/types').InterventionStatus,
       assignedDate: payload.startDate,
       baselineRiskScore: resolvedBaseline,
     };
@@ -565,7 +565,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
         [studentId]: {
           ...existing,
           interventionStatus: 'Resolved',
-          activeIntervention: existing.activeIntervention ? { ...existing.activeIntervention, status: 'Resolved' } : null
+          activeIntervention: existing.activeIntervention ? { ...existing.activeIntervention, status: 'Resolved' as import('@/lib/types').InterventionStatus } : null
         }
       };
     });
@@ -600,7 +600,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
         [studentId]: {
           ...existing,
           interventionStatus: 'Active',
-          activeIntervention: existing.activeIntervention ? { ...existing.activeIntervention, status: 'Active' } : null
+          activeIntervention: existing.activeIntervention ? { ...existing.activeIntervention, status: 'Active' as import('@/lib/types').InterventionStatus } : null
         }
       };
     });

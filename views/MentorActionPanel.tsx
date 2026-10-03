@@ -76,6 +76,7 @@ export const MentorActionPanel: React.FC<MentorActionPanelProps> = ({
   const [supportType, setSupportType] = useState('Tutoring');
   const [supportSubjects, setSupportSubjects] = useState(recommendedSubject);
   const [contactMethod, setContactMethod] = useState('Email');
+  const [description, setDescription] = useState('');
   const [notes, setNotes] = useState('');
   const [assignedBy] = useState('Mentor');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -110,6 +111,8 @@ export const MentorActionPanel: React.FC<MentorActionPanelProps> = ({
         status = 'Notified';
         break;
       case 'Other':
+        details = { description: description.trim() };
+        break;
       default:
         break;
     }
@@ -386,6 +389,15 @@ export const MentorActionPanel: React.FC<MentorActionPanelProps> = ({
                   <option value="Email">Email</option>
                   <option value="In-person meeting">In-person meeting</option>
                 </select>
+              </div>
+            </div>
+          )}
+
+          {actionType === 'Other' && (
+            <div className="p-4 bg-[#F5F1E8] border-2 border-[#0D0D0D] space-y-4">
+              <div className="space-y-1">
+                <label className="block font-bold text-xs uppercase tracking-wider text-[#0D0D0D]">Description <span className="text-[#D62828]">*</span></label>
+                <input type="text" required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Discussed new study plan" className="neo-input w-full p-2 text-sm" />
               </div>
             </div>
           )}

@@ -3,15 +3,17 @@
  */
 
 export type RiskLevel = 'Low' | 'Medium' | 'High';
-export type InterventionStatus = 'None' | 'Active' | 'Resolved' | 'Referred' | 'Notified';
+export const INTERVENTION_STATUSES = [
+  'None', 'Active', 'Resolved', 'Referred', 'Notified', 'Discontinued',
+] as const;
+export type InterventionStatus = (typeof INTERVENTION_STATUSES)[number];
 
-export type ActionType =
-  | 'Extra Class'
-  | 'Counseling'
-  | 'Financial Aid Referral'
-  | 'Academic Support'
-  | 'Parent/Guardian Notified'
-  | 'Other';
+export const ACTION_TYPES = [
+  'Extra Class', 'Counseling', 'Financial Aid Referral',
+  'Academic Support', 'Parent/Guardian Notified', 'Other',
+] as const;
+export type ActionType = (typeof ACTION_TYPES)[number];
+
 
 export interface StudentSummary {
   studentId: string;
@@ -40,6 +42,15 @@ export interface AttendanceHistoryItem {
   subjects?: SubjectAttendanceEntry[];
   isUploaded?: boolean;
 }
+
+export interface NotificationLogEntry {
+  type: string;
+  details?: Record<string, unknown>;
+  assignedBy?: string;
+  startDate?: string;
+  at: string;
+}
+
 
 // Legacy type kept for backward compatibility
 export interface SubjectAttendanceItem {
@@ -70,6 +81,7 @@ export interface StudentDetail {
   riskLevel: RiskLevel;
   interventionStatus?: InterventionStatus;
   activeIntervention?: StudentActiveIntervention | null;
+  notificationLog?: NotificationLogEntry[];
   contributingFactors: ContributingFactor[];
   attendanceHistory: AttendanceHistoryItem[];
   subjectAttendance: SubjectAttendanceItem[];
@@ -118,11 +130,14 @@ export interface StudentActiveIntervention {
     subject?: string;
     schedule?: string;
     instructor?: string;
-    [key: string]: unknown;
+    description?: string;
+    [k: string]: unknown;
   };
-  status: string;
+  status: InterventionStatus;
   assignedDate: string;
+  assignedBy?: string;
   baselineRiskScore?: number;
+  dataPointsAtAssign?: number;
 }
 
 export interface StudentStatusData {

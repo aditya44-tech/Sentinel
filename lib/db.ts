@@ -161,10 +161,10 @@ export function createIntervention(payload: MentorActionPayload, baselineRiskSco
 
   // The live intervention lives on the student record itself, with the baseline
   // frozen at assignment time. This is what the profile and outcome pages read.
-  const activeIntervention = {
+  const activeIntervention: import('./types').StudentActiveIntervention = {
     type: payload.type,
-    details: payload.details,
-    status: 'Active',
+    details: payload.details as { [k: string]: unknown },
+    status: 'Active' as import('./types').InterventionStatus,
     assignedDate: payload.startDate,
     baselineRiskScore,
   };
@@ -254,13 +254,13 @@ function setInterventionStatus(studentId: string, status: 'Active' | 'Resolved')
   if (detail) {
     detail.interventionStatus = status;
     if (detail.activeIntervention) {
-      detail.activeIntervention = { ...detail.activeIntervention, status };
+      detail.activeIntervention = { ...detail.activeIntervention, status: status as import('./types').InterventionStatus };
     }
   }
 
   const statusEntry = state.statuses[studentId];
   if (statusEntry?.activeIntervention) {
-    statusEntry.activeIntervention.status = status;
+    statusEntry.activeIntervention.status = status as import('./types').InterventionStatus;
   }
 
   const storedOutcome = state.outcomes[studentId];

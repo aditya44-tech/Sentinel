@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 
+import { INTERVENTION_STATUSES } from './types';
+
 // Ensure models aren't redefined upon hot reloads
+const SubjectEntry = { _id: false, subject: String, percentage: Number };
+
 const StudentSchema = new mongoose.Schema({
   studentId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -9,16 +13,15 @@ const StudentSchema = new mongoose.Schema({
   
   riskScore: { type: Number, default: 0 },
   riskLevel: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Low' },
-  interventionStatus: { type: String, enum: ['None', 'Active', 'Resolved'], default: 'None' },
+  interventionStatus: { type: String, enum: INTERVENTION_STATUSES, default: 'None' },
   
   // Detailed Data
   attendanceHistory: [{
+    _id: false,
     week: String,
     percentage: Number,
-    subjects: [{
-      subject: String,
-      percentage: Number
-    }]
+    isUploaded: { type: Boolean, default: false },
+    subjects: [SubjectEntry]
   }],
   subjectAttendance: [{
     subject: String,
@@ -56,10 +59,13 @@ const StudentSchema = new mongoose.Schema({
   activeIntervention: {
     type: { type: String },
     details: { type: mongoose.Schema.Types.Mixed },
-    status: { type: String, enum: ['Active', 'Resolved', 'Discontinued'] },
+    status: { type: String, enum: INTERVENTION_STATUSES },
     assignedDate: { type: String },
-    baselineRiskScore: { type: Number }
-  }
+    assignedBy: { type: String },
+    baselineRiskScore: { type: Number },
+    dataPointsAtAssign: { type: Number }
+  },
+  notificationLog: [mongoose.Schema.Types.Mixed]
 }, { timestamps: true });
 
 export const Student = mongoose.models.Student || mongoose.model('Student', StudentSchema);
@@ -78,19 +84,5 @@ const UploadHistorySchema = new mongoose.Schema({
 
 export const UploadHistory = mongoose.models.UploadHistory || mongoose.model('UploadHistory', UploadHistorySchema);
 
-const OutcomeSchema = new mongoose.Schema({
-  studentId: { type: String, required: true },
-  name: { type: String, required: true },
-  intervention: {
-    type: { type: String },
-    details: { type: mongoose.Schema.Types.Mixed },
-    startDate: { type: String }
-  },
-  baselineScore: { type: Number },
-  currentScore: { type: Number },
-  scoreDelta: { type: Number },
-  outcome: { type: String },
-  checkpointDate: { type: String }
-}, { timestamps: true });
-
-export const Outcome = mongoose.models.Outcome || mongoose.model('Outcome', OutcomeSchema);
+const MetaSchema = new mongoose.Schema({ key: { type: String, unique: true }, value: Boolean });
+export const Meta = mongoose.models.Meta || mongoose.model('Meta', MetaSchema);
