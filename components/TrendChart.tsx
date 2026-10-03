@@ -197,6 +197,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
                 fill={`url(#areaGrad-${yKey})`}
                 stroke="none"
                 isAnimationActive={true}
+                connectNulls={true}
               />
             )}
             <Line
@@ -207,6 +208,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               dot={{ r: singlePoint ? 7 : 5, fill: '#FFFFFF', stroke: '#0D0D0D', strokeWidth: 2.5 }}
               activeDot={{ r: 7, fill: lineColor, stroke: '#0D0D0D', strokeWidth: 3 }}
               isAnimationActive={true}
+              connectNulls={true}
               label={singlePoint ? {
                 position: 'top',
                 offset: 12,
