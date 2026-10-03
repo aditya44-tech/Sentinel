@@ -56,9 +56,7 @@ export function recomputeStudentRisk(existing: StudentDetail): StudentDetail {
     backlogs: existing.backlogCount ?? 0,
     backlogSubjects: existing.backlogSubjects ?? [],
     feeOverdueDays: existing.feeOverdueDays ?? 0,
-    submissionRate:
-      existing.submissionRate ??
-      ((existing.contributingFactors ?? []).some(f => f.factor === 'Low Engagement') ? 45 : 70),
+    submissionRate: existing.submissionRate,
   };
 
   const result = computeRiskScore(raw);

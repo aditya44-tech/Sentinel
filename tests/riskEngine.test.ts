@@ -12,6 +12,7 @@ import {
   getSuggestedAction,
   getActionTypeForSuggestion,
   generateFallbackExplanation,
+  pickSubjectRows,
   type RawStudentData,
 } from '../lib/riskEngine.ts';
 
@@ -429,4 +430,25 @@ test('attendance scoring interpolates smoothly within bands (no hard cliff at bo
   assert.ok(pts74 > pts75, `74% (${pts74}) should > 75% (${pts75}) — interpolation, not cliff`);
   assert.ok(pts75 >= pts84, `75% (${pts75}) should >= 84% (${pts84})`);
   assert.ok(pts84 > pts85, `84% (${pts84}) should > 85% (${pts85})`);
+});
+
+test('pickSubjectRows: uses latest attendance history subjects if available', () => {
+  const s = {
+    attendanceHistory: [
+      { week: 'W1', subjects: [{ subject: 'Math', percentage: 90 }] },
+      { week: 'W2', subjects: [{ subject: 'Math', percentage: 80 }] },
+    ],
+    subjectAttendance: [{ subject: 'Math', percentage: 100 }],
+  };
+  const rows = pickSubjectRows(s as any);
+  assert.strictEqual(rows[0].percentage, 80);
+});
+
+test('pickSubjectRows: falls back to subjectAttendance', () => {
+  const s = {
+    attendanceHistory: [{ week: 'W1', subjects: [] }],
+    subjectAttendance: [{ subject: 'Math', percentage: 100 }],
+  };
+  const rows = pickSubjectRows(s as any);
+  assert.strictEqual(rows[0].percentage, 100);
 });

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActionType, MentorActionPayload } from '@/lib/types';
-import { getActionTypeForSuggestion } from '@/lib/riskEngine';
+import { getActionTypeForSuggestion, pickSubjectRows } from '@/lib/riskEngine';
 import {
   ArrowLeft,
   CheckCircle,
@@ -34,8 +34,9 @@ export const MentorActionPanel: React.FC<MentorActionPanelProps> = ({
   // The engine owns the recommendation wording → intervention type mapping.
   const getInitialActionType = getActionTypeForSuggestion;
 
+  const subjectRows = pickSubjectRows(student);
   const availableSubjects = Array.from(new Set([
-    ...(student.subjectAttendance?.map(s => s.subject) || []),
+    ...(subjectRows.map((s: any) => s.subject) || []),
     ...(student.backlogSubjects?.flatMap(s => s.split(/[,;]/).map(str => str.trim()).filter(Boolean)) || []),
     'Data Structures', 'DBMS', 'Computational Math', 'Computer Network', 'Python Programming'
   ]));
@@ -58,8 +59,8 @@ export const MentorActionPanel: React.FC<MentorActionPanelProps> = ({
   } else if (parsedBacklogSubjects.length > 0) {
     recommendedSubject = parsedBacklogSubjects[0];
     recommendationReason = 'Low Grade';
-  } else if (student.subjectAttendance && student.subjectAttendance.length > 0) {
-    recommendedSubject = student.subjectAttendance.reduce((min, curr) => curr.percentage < min.percentage ? curr : min, student.subjectAttendance[0]).subject;
+  } else if (subjectRows.length > 0) {
+    recommendedSubject = subjectRows.reduce((min: any, curr: any) => curr.percentage < min.percentage ? curr : min, subjectRows[0]).subject;
     recommendationReason = 'Low Attendance';
   }
 
@@ -104,7 +105,7 @@ export const MentorActionPanel: React.FC<MentorActionPanelProps> = ({
         status = 'Referred';
         break;
       case 'Academic Support':
-        details = { supportType, supportSubjects: supportSubjects.split(',').map(s => s.trim()) };
+        details = { supportType, supportSubjects: supportSubjects.split(',').map((s: string) => s.trim()) };
         break;
       case 'Parent/Guardian Notified':
         details = { contactMethod };
@@ -397,7 +398,7 @@ export const MentorActionPanel: React.FC<MentorActionPanelProps> = ({
             <div className="p-4 bg-[#F5F1E8] border-2 border-[#0D0D0D] space-y-4">
               <div className="space-y-1">
                 <label className="block font-bold text-xs uppercase tracking-wider text-[#0D0D0D]">Description <span className="text-[#D62828]">*</span></label>
-                <input type="text" required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Discussed new study plan" className="neo-input w-full p-2 text-sm" />
+                <textarea required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Discussed new study plan" className="neo-input w-full p-2 text-sm" rows={3}></textarea>
               </div>
             </div>
           )}

@@ -64,6 +64,10 @@ async function postGroq(t: any, body: Record<string, unknown>, attempts = 2): Pr
 }
 
 async function checkServer(t: any) {
+  if (!process.env.GROQ_API_KEY) {
+    t.skip('GROQ_API_KEY is not set');
+    return false;
+  }
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 2000);

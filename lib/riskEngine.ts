@@ -23,7 +23,7 @@ export interface RawStudentData {
   backlogs: number;
   backlogSubjects: string[];
   feeOverdueDays: number;
-  submissionRate: number;
+  submissionRate?: number;
 }
 
 export interface RiskResult {
@@ -201,9 +201,9 @@ function scoreFeeOverdue(overdueDays: number) {
   return { points: pts, reason };
 }
 
-function scoreEngagement(submissionRate: number) {
-  if (!Number.isFinite(submissionRate) || submissionRate < 0 || submissionRate > 100) {
-    return { points: 0, reason: 'Submission rate unavailable or invalid.' };
+function scoreEngagement(submissionRate?: number) {
+  if (typeof submissionRate !== 'number' || !Number.isFinite(submissionRate) || submissionRate < 0 || submissionRate > 100) {
+    return { points: 0, reason: 'No engagement data' };
   }
   let pts = 0;
   if (submissionRate < 40) pts = 10;
@@ -214,16 +214,31 @@ function scoreEngagement(submissionRate: number) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Subject Rows Utility (Phase 3 spec)
+// ─────────────────────────────────────────────────────────────────────────────
+export function pickSubjectRows(student: { attendanceHistory?: any[]; subjectAttendance?: any[] }) {
+  if (student.attendanceHistory && student.attendanceHistory.length > 0) {
+    const latest = student.attendanceHistory[student.attendanceHistory.length - 1];
+    if (latest.subjects && latest.subjects.length > 0) {
+      return latest.subjects;
+    }
+  }
+  return student.subjectAttendance || [];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Suggested action map (Phase 4 of spec)
 // ─────────────────────────────────────────────────────────────────────────────
 export function getSuggestedAction(dominantFactor: string, student: RawStudentData): string {
   switch (dominantFactor) {
-    case 'Grade Decline':
-      if (student.subjectAttendance && student.subjectAttendance.length > 0) {
-        const lowest = student.subjectAttendance.reduce((min, curr) => curr.percentage < min.percentage ? curr : min, student.subjectAttendance[0]);
+    case 'Grade Decline': {
+      const rows = pickSubjectRows(student);
+      if (rows.length > 0) {
+        const lowest = rows.reduce((min: any, curr: any) => curr.percentage < min.percentage ? curr : min, rows[0]);
         return `Extra Class / Tutoring: ${lowest.subject}`;
       }
       return 'Extra Class / Tutoring';
+    }
     case 'Attendance Decline': return 'Counseling / Check-in';
     case 'Fee Overdue': return 'Financial Aid Referral';
     case 'Backlogs': return 'Academic Support';

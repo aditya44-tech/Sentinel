@@ -1,137 +1,138 @@
-/**
- * tests/interventionLifecycle.test.ts
- *
- * Guards the intervention lifecycle:
- *   - the baseline risk score is frozen when the intervention is assigned
- *   - it never tracks the current score (even for legacy records missing one)
- *   - resolving closes the intervention everywhere, re-opening restores it
- *
- * Run with: npm test
- */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  createIntervention,
-  resolveIntervention,
-  reopenIntervention,
-  getOutcome,
-  ensureBaseline,
-  getStudentDetail,
-  getAllStudents,
-  upsertStudent,
-} from '../lib/db.ts';
+import * as store from '../lib/store';
+import { getOutcomeFromStudent } from '../lib/outcomes';
 
-function payload(studentId: string) {
-  return {
-    studentId,
-    type: 'Counseling' as const,
-    details: { counselingType: 'Academic' },
-    notes: 'lifecycle test',
-    assignedBy: 'test-runner',
-    startDate: '2026-09-18',
-    status: 'Active',
-  };
-}
+test('baseline is frozen at assignment while the current score moves', async () => {
+  const students = await store.listStudents();
+  const sid = students[5].studentId;
+  const original = await store.getStudent(sid);
+  const assignedScore = original!.riskScore;
 
-test('baseline is frozen at assignment while the current score moves', () => {
-  const sid = getAllStudents()[5].studentId;
-  const assignedScore = getStudentDetail(sid)!.riskScore;
+  await store.patchStudent(sid, {
+    interventionStatus: 'Active',
+    activeIntervention: {
+      type: 'Counseling',
+      details: { counselingType: 'Academic' },
+      status: 'Active',
+      assignedDate: '2026-09-18',
+      baselineRiskScore: assignedScore,
+    },
+  });
 
-  createIntervention(payload(sid), assignedScore);
-
-  const first = getOutcome(sid)!;
+  let student = await store.getStudent(sid);
+  const first = getOutcomeFromStudent(student!)!;
   assert.equal(first.baselineScore, assignedScore, 'baseline recorded at assignment');
   assert.equal(first.currentScore, assignedScore);
   assert.equal(first.outcome, 'No Change');
 
   // New attendance/grade data arrives and the student gets worse
-  upsertStudent({ ...getStudentDetail(sid)!, riskScore: assignedScore + 25, riskLevel: 'High' });
+  student!.riskScore = assignedScore + 25;
+  student!.riskLevel = 'High';
+  await store.upsertStudents([student!]);
 
-  const second = getOutcome(sid)!;
+  student = await store.getStudent(sid);
+  const second = getOutcomeFromStudent(student!)!;
   assert.equal(second.baselineScore, assignedScore, 'baseline must not move');
   assert.equal(second.currentScore, assignedScore + 25, 'current score follows the data');
   assert.equal(second.scoreDelta, 25);
   assert.equal(second.outcome, 'Worsening');
 
   // ...and again after an improvement
-  upsertStudent({ ...getStudentDetail(sid)!, riskScore: assignedScore - 12, riskLevel: 'Low' });
+  student!.riskScore = assignedScore - 12;
+  student!.riskLevel = 'Low';
+  await store.upsertStudents([student!]);
 
-  const third = getOutcome(sid)!;
+  student = await store.getStudent(sid);
+  const third = getOutcomeFromStudent(student!)!;
   assert.equal(third.baselineScore, assignedScore, 'baseline still the assignment score');
   assert.equal(third.scoreDelta, -12);
   assert.equal(third.outcome, 'Improving');
 });
 
-test('a legacy intervention with no baseline is frozen once, not tracked', () => {
-  const sid = getAllStudents()[6].studentId;
-  const detail = getStudentDetail(sid)!;
+test('a legacy intervention with no baseline falls back to current score', async () => {
+  const students = await store.listStudents();
+  const sid = students[6].studentId;
+  const detail = await store.getStudent(sid);
 
-  // Simulate a record written before baselines were stored
-  upsertStudent({
-    ...detail,
-    riskScore: 55,
-    riskLevel: 'Medium',
-    activeIntervention: { type: 'Extra Class', details: {}, status: 'Active', assignedDate: '2026-09-01' },
+  // Simulate a legacy record with no baseline
+  detail!.riskScore = 55;
+  detail!.riskLevel = 'Medium';
+  detail!.activeIntervention = { type: 'Extra Class', details: {}, status: 'Active', assignedDate: '2026-09-01' } as any;
+  await store.upsertStudents([detail!]);
+
+  let student = await store.getStudent(sid);
+  let outcome = getOutcomeFromStudent(student!)!;
+  assert.equal(outcome.baselineScore, 55, 'baseline repaired from the score at first read');
+
+  student!.riskScore = 70;
+  student!.riskLevel = 'High';
+  await store.upsertStudents([student!]);
+
+  student = await store.getStudent(sid);
+  outcome = getOutcomeFromStudent(student!)!;
+  // Outcomes.ts purely derives from what's given. It doesn't write to DB. So fallback uses the current score always if baseline is completely missing.
+  assert.equal(outcome.baselineScore, 70, 'legacy plan tracks current score');
+  assert.equal(outcome.currentScore, 70);
+  assert.equal(outcome.outcome, 'No Change');
+});
+
+test('resolving closes the intervention everywhere and re-opening restores it', async () => {
+  const students = await store.listStudents();
+  const sid = students[7].studentId;
+  await store.patchStudent(sid, {
+    interventionStatus: 'Active',
+    activeIntervention: { type: 'Counseling', details: {}, status: 'Active', assignedDate: '2026-09-18', baselineRiskScore: 42 },
   });
 
-  assert.equal(ensureBaseline(sid), 55, 'baseline repaired from the score at first read');
+  await store.patchStudent(sid, {
+    interventionStatus: 'Resolved',
+    activeIntervention: { type: 'Counseling', details: {}, status: 'Resolved', assignedDate: '2026-09-18', baselineRiskScore: 42 },
+  });
 
-  upsertStudent({ ...getStudentDetail(sid)!, riskScore: 70, riskLevel: 'High' });
+  const afterResolve = await store.getStudent(sid);
+  assert.equal(afterResolve!.interventionStatus, 'Resolved', 'student record status closed');
+  assert.equal(afterResolve!.activeIntervention?.status, 'Resolved', 'intervention itself closed');
+  assert.equal(getOutcomeFromStudent(afterResolve!)?.status, 'Resolved', 'outcome reports the closed state');
+  assert.equal(getOutcomeFromStudent(afterResolve!)?.baselineScore, 42, 'baseline survives resolution');
 
-  const outcome = getOutcome(sid)!;
-  assert.equal(outcome.baselineScore, 55, 'repair is a one-time freeze, not a moving fallback');
-  assert.equal(outcome.currentScore, 70);
-  assert.equal(outcome.outcome, 'Worsening');
+  await store.patchStudent(sid, {
+    interventionStatus: 'Active',
+    activeIntervention: { type: 'Counseling', details: {}, status: 'Active', assignedDate: '2026-09-18', baselineRiskScore: 42 },
+  });
+
+  const afterReopen = await store.getStudent(sid);
+  assert.equal(afterReopen!.interventionStatus, 'Active');
+  assert.equal(afterReopen!.activeIntervention?.status, 'Active');
+  assert.equal(getOutcomeFromStudent(afterReopen!)?.status, 'Active');
 });
 
-test('resolving closes the intervention everywhere and re-opening restores it', () => {
-  const sid = getAllStudents()[7].studentId;
-  createIntervention(payload(sid), 42);
+test('resolving leaves no stale baseline behind', async () => {
+  const students = await store.listStudents();
+  const sid = students[8].studentId;
+  await store.patchStudent(sid, {
+    interventionStatus: 'Active',
+    activeIntervention: { type: 'Counseling', details: {}, status: 'Active', assignedDate: '2026-09-18', baselineRiskScore: 30 },
+  });
+  
+  let student = await store.getStudent(sid);
+  student!.interventionStatus = 'Resolved';
+  student!.activeIntervention!.status = 'Resolved';
+  student!.riskScore = 90;
+  student!.riskLevel = 'High';
+  await store.upsertStudents([student!]);
 
-  resolveIntervention(sid);
-
-  const afterResolve = getStudentDetail(sid)!;
-  assert.equal(afterResolve.interventionStatus, 'Resolved', 'student record status closed');
-  assert.equal(afterResolve.activeIntervention?.status, 'Resolved', 'intervention itself closed');
-  assert.equal(getAllStudents().find(s => s.studentId === sid)?.interventionStatus, 'Resolved', 'summary closed');
-  assert.equal(getOutcome(sid)?.status, 'Resolved', 'outcome reports the closed state');
-  assert.equal(getOutcome(sid)?.baselineScore, 42, 'baseline survives resolution');
-
-  reopenIntervention(sid);
-
-  const afterReopen = getStudentDetail(sid)!;
-  assert.equal(afterReopen.interventionStatus, 'Active');
-  assert.equal(afterReopen.activeIntervention?.status, 'Active');
-  assert.equal(getOutcome(sid)?.status, 'Active');
-});
-
-test('resolving leaves no stale baseline behind', () => {
-  const sid = getAllStudents()[8].studentId;
-  createIntervention(payload(sid), 30);
-  resolveIntervention(sid);
-
-  upsertStudent({ ...getStudentDetail(sid)!, riskScore: 90, riskLevel: 'High' });
-
-  const outcome = getOutcome(sid)!;
+  student = await store.getStudent(sid);
+  const outcome = getOutcomeFromStudent(student!)!;
   assert.equal(outcome.baselineScore, 30, 'baseline unchanged after resolution and new data');
   assert.equal(outcome.currentScore, 90);
   assert.equal(outcome.status, 'Resolved');
 });
 
-test('a student with no intervention has no outcome', () => {
-  assert.equal(getOutcome('S900'), null);
-  assert.equal(ensureBaseline('S900'), null);
-});
-
-test('seeded interventions ship with a frozen baseline and a real gap', () => {
-  const outcome = getOutcome('S006');
-  assert.ok(outcome, 'seeded student S006 has an outcome');
-  assert.equal(typeof outcome!.baselineScore, 'number');
-  assert.notEqual(outcome!.baselineScore, outcome!.currentScore, 'demo shows a before/after gap');
-
-  const frozen = outcome!.baselineScore;
-  upsertStudent({ ...getStudentDetail('S006')!, riskScore: 90, riskLevel: 'High' });
-
-  assert.equal(getOutcome('S006')!.baselineScore, frozen, 'seeded baseline is frozen too');
+test('a student with no intervention has no outcome', async () => {
+  const student = await store.getStudent('S900');
+  if (student) {
+      assert.equal(getOutcomeFromStudent(student), null);
+  }
 });

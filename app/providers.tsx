@@ -5,6 +5,7 @@ import { AuthUser } from '@/views/LoginView';
 import { StudentSummary, StudentDetail, UploadLog, MentorActionPayload, OutcomeComparisonData } from '@/lib/types';
 import { computeRiskScore, generateFallbackExplanation, RawStudentData } from '@/lib/riskEngine';
 import { buildSnapshot, planUploadRevert, affectedStudentIds } from '@/lib/uploadRevert';
+import { normalizeWeek, weekNum } from '@/lib/weeks';
 
 /** Case/whitespace-insensitive column lookup, so "Week", "WEEK" and " week " all work. */
 function getField(row: any, name: string): any {
@@ -13,12 +14,19 @@ function getField(row: any, name: string): any {
   return key === undefined ? undefined : row[key];
 }
 
-/** Week label from an uploaded row, normalised to "Week N". Returns null when the row has none. */
 function getWeekFromRow(row: any): string | null {
   const raw = getField(row, 'week');
   const v = String(raw ?? '').trim();
   if (!v) return null;
-  return /^\d+$/.test(v) ? `Week ${v}` : v; // "2" -> "Week 2"
+  return normalizeWeek(v);
+}
+
+function mergeWeek(existing: any[] | undefined, entry: any) {
+  const cur = existing ?? [];
+  const base = cur.some(h => h.isUploaded) ? cur : cur.filter(h => h.isUploaded);
+  const week = normalizeWeek(entry.week);
+  const rest = base.filter(h => normalizeWeek(h.week) !== week);
+  return [...rest, { ...entry, week, isUploaded: true }].sort((a, b) => weekNum(a.week) - weekNum(b.week));
 }
 
 interface SentinelContextType {
@@ -124,7 +132,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
     return null;
   };
 
-  const handleDataUpload = async (parsedData: any[], weekLabel: string, uploadType: import('@/lib/types').UploadType, fileName?: string, overwrite?: boolean): Promise<{ success: boolean; updatedCount: number; skippedCount: number }> => {
+  const handleDataUpload = async (parsedData: any[], weekLabel: string, uploadType: import('@/lib/types').UploadType, fileName?: string): Promise<{ success: boolean; updatedCount: number; skippedCount: number }> => {
     // The client-side detail cache is lazy — make sure we hold each affected
     // student's FULL record from the server before applying changes. Otherwise a
     // student we have never opened would be replaced by an empty stub, wiping
@@ -164,7 +172,6 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
     for (const sid of serverConfirm.missing) delete newDetails[sid];
     let updatedCount = 0;
     let skippedCount = 0;
-    const clearedHistoryIds = new Set<string>();
 
     // Snapshot original state of each affected student BEFORE making changes
     // This allows clean revert when the upload is deleted
@@ -200,12 +207,6 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
         // If CSV has its own "week" column (new overall format), prefer that over the UI-provided label
         const effectiveWeekLabel = getWeekFromRow(row) || weekLabel;
         
-        if (overwrite && !clearedHistoryIds.has(sid)) {
-          existing.attendanceHistory = [];
-          existing.subjectAttendance = [];
-          clearedHistoryIds.add(sid);
-        }
-
         if (!isNaN(att)) {
           // Parse subject attendance columns from CSV (e.g., "DBMS_attendance", "CN_attendance")
           const subjectCols = Object.keys(row).filter(k => k.endsWith('_attendance'));
@@ -226,21 +227,11 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          // If existing history contains un-uploaded mock entries (without isUploaded: true),
-          // filter them out so real user CSV uploads replace mock history rather than sitting alongside 4 mock weeks.
-          const currentHistory = existing.attendanceHistory || [];
-          const hasUploadedEntries = currentHistory.some(h => h.isUploaded);
-          const baseHistory = hasUploadedEntries
-            ? currentHistory
-            : currentHistory.filter(h => h.isUploaded);
-
-          const withoutThisWeek = baseHistory.filter(h => h.week !== effectiveWeekLabel);
-          existing.attendanceHistory = [...withoutThisWeek, {
+          existing.attendanceHistory = mergeWeek(existing.attendanceHistory, {
             week: effectiveWeekLabel,
             percentage: att,
             subjects: mergedSubjects.length > 0 ? mergedSubjects : undefined,
-            isUploaded: true,
-          }];
+          });
           
           // Also update the top-level subjectAttendance with this latest data
           if (mergedSubjects.length > 0) {
@@ -254,7 +245,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
             studentId: sid, name: existing.name, department: existing.department, year: existing.year,
             attendanceHistory: existing.attendanceHistory, subjectAttendance: existing.subjectAttendance, termTests: existing.termTests,
             backlogs: existing.backlogCount || 0, backlogSubjects: existing.backlogSubjects || [], feeOverdueDays: existing.feeOverdueDays || 0,
-            submissionRate: existing.submissionRate ?? (existing.contributingFactors.some(f => f.factor === 'Low Engagement') ? 45 : 70),
+            submissionRate: existing.submissionRate,
           };
           const result = computeRiskScore(raw);
           existing.riskScore = result.riskScore; existing.riskLevel = result.riskLevel; existing.contributingFactors = result.contributingFactors; existing.suggestedAction = result.suggestedAction;
@@ -274,7 +265,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
             studentId: sid, name: existing.name, department: existing.department, year: existing.year,
             attendanceHistory: existing.attendanceHistory, subjectAttendance: existing.subjectAttendance, termTests: existing.termTests,
             backlogs: existing.backlogCount || 0, backlogSubjects: existing.backlogSubjects || [], feeOverdueDays: existing.feeOverdueDays || 0,
-            submissionRate: existing.submissionRate ?? (existing.contributingFactors.some(f => f.factor === 'Low Engagement') ? 45 : 70),
+            submissionRate: existing.submissionRate,
           };
           const result = computeRiskScore(raw);
           existing.riskScore = result.riskScore; existing.riskLevel = result.riskLevel; existing.contributingFactors = result.contributingFactors; existing.suggestedAction = result.suggestedAction;
@@ -289,7 +280,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
             studentId: sid, name: existing.name, department: existing.department, year: existing.year,
             attendanceHistory: existing.attendanceHistory, subjectAttendance: existing.subjectAttendance, termTests: existing.termTests,
             backlogs: existing.backlogCount || 0, backlogSubjects: existing.backlogSubjects || [], feeOverdueDays: overdue,
-            submissionRate: existing.submissionRate ?? (existing.contributingFactors.some(f => f.factor === 'Low Engagement') ? 45 : 70),
+            submissionRate: existing.submissionRate,
           };
           const result = computeRiskScore(raw);
           existing.riskScore = result.riskScore; existing.riskLevel = result.riskLevel; existing.contributingFactors = result.contributingFactors; existing.suggestedAction = result.suggestedAction;
@@ -305,7 +296,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
             studentId: sid, name: existing.name, department: existing.department, year: existing.year,
             attendanceHistory: existing.attendanceHistory, subjectAttendance: existing.subjectAttendance, termTests: existing.termTests,
             backlogs: count, backlogSubjects: subjects, feeOverdueDays: existing.feeOverdueDays || 0,
-            submissionRate: existing.submissionRate ?? (existing.contributingFactors.some(f => f.factor === 'Low Engagement') ? 45 : 70),
+            submissionRate: existing.submissionRate,
           };
           const result = computeRiskScore(raw);
           existing.riskScore = result.riskScore; existing.riskLevel = result.riskLevel; existing.contributingFactors = result.contributingFactors; existing.suggestedAction = result.suggestedAction;
@@ -339,39 +330,7 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
       console.log('[upload] attendanceHistory after merge:', newDetails[affectedIds[0]]?.attendanceHistory);
     }
 
-    // Use functional state updates to avoid stale closures
-    setDetailsMap(prev => ({ ...prev, ...newDetails }));
-    setStudents(prev => {
-      const nextStudents = [...prev];
-      for (const sid of affectedIds) {
-        const detail = newDetails[sid];
-        if (!detail) continue;
-        const idx = nextStudents.findIndex(s => s.studentId === sid);
-        if (idx !== -1) {
-          nextStudents[idx] = { ...nextStudents[idx], riskScore: detail.riskScore, riskLevel: detail.riskLevel };
-        } else {
-          nextStudents.push({ 
-            studentId: detail.studentId, 
-            name: detail.name, 
-            department: detail.department, 
-            year: detail.year, 
-            riskScore: detail.riskScore, 
-            riskLevel: detail.riskLevel, 
-            interventionStatus: detail.interventionStatus || 'None' 
-          });
-        }
-      }
-      return nextStudents.sort((a, b) => b.riskScore - a.riskScore);
-    });
-
-    // Server Sync (fire and forget)
-    const studentsArray = Object.values(newDetails);
-    fetch('/api/students', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(studentsArray)
-    }).catch(e => console.error('Student sync failed', e));
-
-    const newLog: UploadLog = {
+    const newLog = {
       uploadedAt: new Date().toISOString(),
       fileName: fileName || `dataset_${uploadType}.csv`,
       week: weekLabel || 'Initial',
@@ -380,17 +339,51 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
       uploadedBy: 'Mentor',
       rawData: parsedData,
       snapshots: snapshots,
-    } as unknown as UploadLog;
+    };
     
-    setUploadHistory(prev => [newLog, ...prev]);
-    setDataVersion(v => v + 1);
-    fetch('/api/history', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...newLog, rawData: parsedData, snapshots })
-    }).catch(e => console.error('History sync failed', e));
+    try {
+      const toSave = affectedIds.map(id => newDetails[id]).filter(Boolean);
+      const saveRes = await fetch('/api/students', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSave),
+      });
+      if (!saveRes.ok) throw new Error(`Saving students failed (${saveRes.status})`);
 
-    return { success: true, updatedCount, skippedCount };
+      const histRes = await fetch('/api/history', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newLog),
+      });
+      if (!histRes.ok) throw new Error(`Saving upload log failed (${histRes.status})`);
+
+      setDetailsMap(prev => ({ ...prev, ...newDetails }));
+      setStudents(prev => {
+        const nextStudents = [...prev];
+        for (const sid of affectedIds) {
+          const detail = newDetails[sid];
+          if (!detail) continue;
+          const idx = nextStudents.findIndex(s => s.studentId === sid);
+          if (idx !== -1) {
+            nextStudents[idx] = { ...nextStudents[idx], riskScore: detail.riskScore, riskLevel: detail.riskLevel };
+          } else {
+            nextStudents.push({ 
+              studentId: detail.studentId, 
+              name: detail.name, 
+              department: detail.department, 
+              year: detail.year, 
+              riskScore: detail.riskScore, 
+              riskLevel: detail.riskLevel, 
+              interventionStatus: detail.interventionStatus || 'None' 
+            });
+          }
+        }
+        return nextStudents.sort((a, b) => b.riskScore - a.riskScore);
+      });
+      
+      setUploadHistory(prev => [newLog as any, ...prev]);
+      setDataVersion(v => v + 1);
+      return { success: true, updatedCount, skippedCount };
+    } catch (e) {
+      console.error('Upload save failed', e);
+      throw e;
+    }
   };
 
   const handleClearAllData = async () => {
@@ -420,74 +413,33 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleDeleteUpload = async (uploadedAt: string) => {
-    const uploadLog = uploadHistory.find(log => log.uploadedAt === uploadedAt) ?? null;
+    const uploadLog = uploadHistory.find(log => log.uploadedAt === uploadedAt);
+    if (!uploadLog) return;
 
-    // ── 1. Work out the restored records for this upload ────────────────────
-    let revertedStudents: StudentDetail[] = [];
-    let removedIds: string[] = [];
-
-    if (uploadLog && Array.isArray((uploadLog as any).rawData)) {
-      // Load any student we do not hold yet, same as the upload path does
-      const ids = affectedStudentIds(uploadLog);
-      const preloaded: Record<string, StudentDetail> = {};
-      await Promise.all(
-        ids.filter(sid => !detailsMap[sid]).map(async (sid) => {
-          try {
-            const res = await fetch(`/api/students/${sid}`);
-            if (!res.ok) return;
-            const data = await res.json();
-            if (data?.student) preloaded[sid] = data.student as StudentDetail;
-          } catch {
-            // Student may have been created by this very upload — it will be removed
-          }
-        })
-      );
-
-      const plan = planUploadRevert(uploadLog, { ...detailsMap, ...preloaded });
-      revertedStudents = plan.updated;
-      removedIds = plan.removedIds;
-    }
-
-    // ── 2. Push the restored records back through the students API ──────────
-    // The client is the only writer the dashboard reads from, so this is what
-    // makes the delete visible everywhere (dashboard, detail pages, outcomes).
     try {
-      if (revertedStudents.length > 0) {
-        await fetch('/api/students', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(revertedStudents),
-        });
-      }
-      for (const sid of removedIds) {
-        await fetch(`/api/students/${sid}`, { method: 'DELETE' });
-      }
-    } catch (e) {
-      console.error('Failed to sync reverted students', e);
-    }
-
-    // ── 3. Delete the log itself ────────────────────────────────────────────
-    try {
-      const deleteParam = uploadLog && (uploadLog as any).id
+      const deleteParam = (uploadLog as any).id
         ? `id=${encodeURIComponent((uploadLog as any).id)}`
         : `uploadedAt=${encodeURIComponent(uploadedAt)}`;
-      await fetch(`/api/history?${deleteParam}`, { method: 'DELETE' });
+      const res = await fetch(`/api/history?${deleteParam}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Revert failed');
+      const data = await res.json();
+      
+      const restored = data.restored || [];
+      const deleted = data.deleted || [];
+      
+      setDetailsMap(prev => {
+        const next = { ...prev };
+        for (const sid of deleted) delete next[sid];
+        for (const st of restored) next[st.studentId] = st;
+        return next;
+      });
+      
+      await refreshFromServer();
+      setDataVersion(v => v + 1);
     } catch (e) {
       console.error('Failed to delete upload log', e);
+      throw e;
     }
-
-    // ── 4. Refresh everything the UI reads from ─────────────────────────────
-    setDetailsMap({});
-
-    try {
-      const studRes = await fetch('/api/students');
-      if (studRes.ok) setStudents(await studRes.json());
-    } catch (e) {
-      console.error('Failed to refresh students after delete', e);
-    }
-
-    setUploadHistory(prev => prev.filter(log => log.uploadedAt !== uploadedAt));
-    setDataVersion(v => v + 1);
   };
 
   const handleInterventionAssigned = async (payload: MentorActionPayload) => {

@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import { StudentSummary, UploadLog } from '@/lib/types';
 import { StudentTableRow } from '@/components/StudentTableRow';
 import { StudentCard } from '@/components/StudentCard';
+import { normalizeWeek } from '@/lib/weeks';
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -123,7 +124,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       return;
     }
 
-    const finalWeekLabel = requiresWeek ? weekLabel : 'Initial';
+    const finalWeekLabel = requiresWeek ? normalizeWeek(weekLabel) : 'Initial';
 
     setIsUploading(true);
     setUploadMessage(null);
@@ -163,7 +164,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           // The handler loads each affected student's full record from the server
           // before applying the upload, so this is awaited.
           setIsUploading(true);
-          onDataUpload(data, finalWeekLabel, uploadType, uploadedFile.name, false)
+          onDataUpload(data, finalWeekLabel, uploadType, uploadedFile.name)
             .then((res) => {
               setIsUploading(false);
               if (res.success) {

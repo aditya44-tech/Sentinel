@@ -32,7 +32,7 @@ export const DELETE = handle(async (req) => {
   const record = id
     ? await store.getHistoryRecord(id)
     : await store.getHistoryByUploadedAt(uploadedAt!);
-  if (!record) return NextResponse.json({ success: true, revertedStudentIds: [], removedStudentIds: [] });
+  if (!record) return NextResponse.json({ success: true, restored: [], deleted: [] });
 
   const recordId: string = (record as any).id || id || uploadedAt!;
 
@@ -49,5 +49,5 @@ export const DELETE = handle(async (req) => {
 
   await store.deleteHistoryRecord(recordId);
 
-  return NextResponse.json({ success: true, revertedStudentIds: updated.map(s => s.studentId), removedStudentIds: removedIds });
+  return NextResponse.json({ success: true, restored: updated, deleted: removedIds });
 });
