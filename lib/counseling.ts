@@ -147,7 +147,7 @@ export interface ContactRecord {
 
 export interface ContactLogEntry {
   date: string;
-  channel: 'Phone' | 'WhatsApp' | 'Email' | 'In-person' | 'Other';
+  channel: 'Phone' | 'WhatsApp' | 'Email' | 'In-person' | 'Other' | 'SMS';
   personContacted: 'Student' | 'Parent' | 'Coordinator' | 'HOD' | 'Welfare Cell' | 'Other';
   outcome: string;
   note: string;
