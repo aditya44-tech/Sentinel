@@ -542,6 +542,8 @@ export interface EscalationStatus {
   dueDate: string | null;
   isOverdue: boolean;
   noResponseDays: number | null;
+  statusLabel: 'Awaiting reply' | 'No response' | 'Escalated' | 'Unreachable, with welfare cell' | 'Contact made' | 'None';
+  isPriority: boolean;
 }
 
 export function computeEscalationStep(
@@ -549,7 +551,9 @@ export function computeEscalationStep(
   lastContactDate: string | null,
   studentResponse: string | null,
   currentRiskLevel: 'Low' | 'Medium' | 'High',
-  riskTrend: 'Improving' | 'No Change' | 'Worsening' | null
+  riskTrend: 'Improving' | 'No Change' | 'Worsening' | null,
+  q5StressRating?: number | null,
+  manualStep?: number
 ): EscalationStatus {
   if (!assignedDate) {
     return {
@@ -559,35 +563,49 @@ export function computeEscalationStep(
       dueDate: null,
       isOverdue: false,
       noResponseDays: null,
+      statusLabel: 'None',
+      isPriority: false,
     };
   }
 
   const assigned = new Date(assignedDate);
   const now = new Date();
   const daysSinceAssign = Math.floor((now.getTime() - assigned.getTime()) / 86400000);
-  const lastContact = lastContactDate ? new Date(lastContactDate) : null;
-  const daysSinceContact = lastContact
-    ? Math.floor((now.getTime() - lastContact.getTime()) / 86400000)
-    : daysSinceAssign;
-
-  const hasResponded = !!studentResponse;
+  const hasResponded = !!studentResponse && studentResponse !== 'Ignored'; // Assuming there's some actual response
   const noResponseDays = hasResponded ? null : daysSinceAssign;
 
-  // Step 5: Risk still rising ≥ 2 weeks with no improvement
-  if (daysSinceAssign >= 14 && (currentRiskLevel === 'High' || riskTrend === 'Worsening')) {
-    const dueDate = new Date(assigned.getTime() + 14 * 86400000).toISOString().split('T')[0];
+  // Priority flag — only raised once there has been at least 3 days without a response
+  const isPriority = !hasResponded && daysSinceAssign >= 3 && (currentRiskLevel === 'High' || riskTrend === 'Worsening' || q5StressRating === 4 || q5StressRating === 5);
+
+  if (hasResponded) {
+    return {
+      step: 1,
+      stepLabel: 'Contact Made',
+      mentorAction: 'Student responded. Case can be closed manually.',
+      dueDate: null,
+      isOverdue: false,
+      noResponseDays: null,
+      statusLabel: 'Contact made',
+      isPriority: false,
+    };
+  }
+
+  // Step 5: Unreachable (or manual override)
+  if (manualStep === 5 || (daysSinceAssign >= 14 && (currentRiskLevel === 'High' || riskTrend === 'Worsening')) || (isPriority && daysSinceAssign >= 7)) {
     return {
       step: 5,
       stepLabel: 'Step 5 — Refer to HOD / Welfare Cell',
       mentorAction: 'Refer to HOD or student welfare cell. Auto-generate record of all contact attempts.',
-      dueDate,
-      isOverdue: daysSinceAssign > 14,
+      dueDate: null,
+      isOverdue: false, // After step 5, it just stays at top, no more reminders
       noResponseDays,
+      statusLabel: 'Unreachable, with welfare cell',
+      isPriority,
     };
   }
 
-  // Step 4: 2 weeks, risk still High or Worsening
-  if (daysSinceAssign >= 14 && (currentRiskLevel === 'High' || riskTrend === 'Worsening')) {
+  // Step 4: Escalated
+  if (daysSinceAssign >= 14) {
     const dueDate = new Date(assigned.getTime() + 14 * 86400000).toISOString().split('T')[0];
     return {
       step: 4,
@@ -596,11 +614,13 @@ export function computeEscalationStep(
       dueDate,
       isOverdue: now > new Date(dueDate),
       noResponseDays,
+      statusLabel: 'Escalated',
+      isPriority,
     };
   }
 
-  // Step 3: 1 week, no response
-  if (daysSinceAssign >= 7 && !hasResponded) {
+  // Step 3: Escalated (first stage)
+  if (daysSinceAssign >= 7) {
     const dueDate = new Date(assigned.getTime() + 7 * 86400000).toISOString().split('T')[0];
     return {
       step: 3,
@@ -609,11 +629,13 @@ export function computeEscalationStep(
       dueDate,
       isOverdue: now > new Date(dueDate),
       noResponseDays,
+      statusLabel: 'Escalated',
+      isPriority,
     };
   }
 
-  // Step 2: 3–5 days, no response
-  if (daysSinceAssign >= 3 && !hasResponded) {
+  // Step 2: No response
+  if (daysSinceAssign >= 3) {
     const dueDate = new Date(assigned.getTime() + 5 * 86400000).toISOString().split('T')[0];
     return {
       step: 2,
@@ -622,17 +644,21 @@ export function computeEscalationStep(
       dueDate,
       isOverdue: now > new Date(dueDate),
       noResponseDays,
+      statusLabel: 'No response',
+      isPriority,
     };
   }
 
-  // Step 1: Day 0
+  // Step 1: Awaiting reply
   return {
     step: 1,
     stepLabel: 'Step 1 — Assigned',
     mentorAction: 'Assign intervention; baseline frozen.',
-    dueDate: assigned.toISOString().split('T')[0],
+    dueDate: new Date(assigned.getTime() + 3 * 86400000).toISOString().split('T')[0],
     isOverdue: false,
     noResponseDays,
+    statusLabel: 'Awaiting reply',
+    isPriority,
   };
 }
 

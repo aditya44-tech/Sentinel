@@ -5,9 +5,39 @@ import { requireMentor } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+import { computeEscalationStep } from '@/lib/counseling';
+
 export const GET = handle(async () => {
   await requireMentor();
-  return NextResponse.json(await store.listStudents());
+  const students = await store.listStudents();
+  
+  const mapped = students.map((s: any) => {
+    if (s.activeIntervention) {
+      const lastContactDate = s.contactLog && s.contactLog.length > 0
+        ? [...s.contactLog].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+        : null;
+        
+      const q5Stress = s.counseling?.answers?.find((a: any) => a.questionId === 'Q5')?.rating;
+
+      const escalation = computeEscalationStep(
+        s.activeIntervention.assignedDate,
+        lastContactDate,
+        s.planResponse?.status || null, // Assuming planResponse is present when responded
+        s.riskLevel,
+        null, // riskTrend placeholder
+        q5Stress
+      );
+      
+      return {
+        ...s,
+        escalationStatusLabel: escalation.statusLabel,
+        isPriority: escalation.isPriority
+      };
+    }
+    return s;
+  });
+
+  return NextResponse.json(mapped);
 });
 
 export const POST = handle(async (req) => {

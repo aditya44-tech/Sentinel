@@ -16,7 +16,7 @@ export function cleanId(v: unknown): string {
   return v;
 }
 
-const SUMMARY_PROJECTION = { studentId: 1, name: 1, department: 1, year: 1, riskScore: 1, riskLevel: 1, interventionStatus: 1, _id: 0 };
+const SUMMARY_PROJECTION = { studentId: 1, name: 1, department: 1, year: 1, riskScore: 1, riskLevel: 1, interventionStatus: 1, escalationStatusLabel: 1, isPriority: 1, activeIntervention: 1, contactLog: 1, planResponse: 1, counseling: 1, _id: 0 };
 
 async function ensureSeeded() {
   if (process.env.SEED_DEMO === 'false') return;
@@ -68,7 +68,7 @@ export async function upsertStudents(list: unknown) {
 }
 
 const PATCHABLE = ['interventionStatus', 'activeIntervention', 'aiExplanation', 'riskScore', 'riskLevel',
-                   'contributingFactors', 'suggestedAction', 'submissionRate'] as const;
+                   'contributingFactors', 'suggestedAction', 'submissionRate', 'escalationStatusLabel', 'isPriority', 'planResponse'] as const;
 
 export async function patchStudent(id: string, patch: Record<string, any>) {
   const studentId = cleanId(id);
@@ -77,7 +77,8 @@ export async function patchStudent(id: string, patch: Record<string, any>) {
   const update: any = {};
   if (patch.activeIntervention === null) { delete $set.activeIntervention; update.$unset = { activeIntervention: '' }; }
   if (Object.keys($set).length) update.$set = $set;
-  if (patch.notificationLog) update.$push = { notificationLog: { $each: patch.notificationLog } }; // Append
+  if (patch.notificationLog) update.$push = { ...(update.$push || {}), notificationLog: { $each: patch.notificationLog } }; // Append
+  if (patch.contactLog) update.$push = { ...(update.$push || {}), contactLog: { $each: patch.contactLog } }; // Append
   if (!Object.keys(update).length) throw new BadRequest('Nothing to update');
   
   if (!usingMongo()) return mem.patchStudentMemory(studentId, patch);

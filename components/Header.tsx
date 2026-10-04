@@ -1,11 +1,16 @@
 "use client";
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { UserCheck, GraduationCap, LogOut } from 'lucide-react';
 import { useSentinel } from '@/app/providers';
 
 export function Header() {
   const { authUser, logout } = useSentinel();
+  const pathname = usePathname();
+
+  // Never show the app header on the landing page — it has its own navbar
+  if (pathname === '/') return null;
 
   return (
     <header className="bg-[#0D0D0D] text-white border-b-4 border-[#0D0D0D] sticky top-0 z-40">

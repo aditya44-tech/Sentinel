@@ -37,6 +37,12 @@ export interface StudentSummary {
   riskScore: number;
   riskLevel: RiskLevel;
   interventionStatus: InterventionStatus;
+  escalationStatusLabel?: string;
+  isPriority?: boolean;
+  activeIntervention?: any;
+  contactLog?: any;
+  planResponse?: any;
+  counseling?: any;
 }
 
 export interface ContributingFactor {

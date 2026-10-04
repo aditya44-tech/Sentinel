@@ -39,6 +39,16 @@ export const StudentCard: React.FC<StudentCardProps> = ({ student, onSelect }) =
         <div className="flex items-center gap-1.5 flex-wrap">
           <RiskBadge riskLevel={student.riskLevel} size="sm" />
           <InterventionStatusBadge status={student.interventionStatus} size="sm" />
+          {student.isPriority && (
+            <span className="inline-flex items-center px-1.5 py-0.5 bg-[#D62828] text-white text-[10px] font-black uppercase border border-[#0D0D0D]">
+              Urgent Priority
+            </span>
+          )}
+          {student.escalationStatusLabel && student.escalationStatusLabel !== 'None' && (
+            <span className="inline-flex items-center px-1.5 py-0.5 bg-neutral-200 text-[#0D0D0D] text-[10px] font-bold border border-[#0D0D0D]">
+              {student.escalationStatusLabel}
+            </span>
+          )}
         </div>
         <button
           className="inline-flex items-center gap-1 font-bold text-xs uppercase px-2 py-1 bg-[#0D0D0D] text-white border-2 border-[#0D0D0D] shadow-[2px_2px_0px_#0D0D0D]"

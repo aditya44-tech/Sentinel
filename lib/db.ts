@@ -145,6 +145,10 @@ export function patchStudentMemory(studentId: string, patch: Record<string, any>
     detail.notificationLog = [...(detail.notificationLog || []), ...(Array.isArray(patch.notificationLog) ? patch.notificationLog : [patch.notificationLog])];
     delete update.notificationLog;
   }
+  if (patch.contactLog) {
+    detail.contactLog = [...(detail.contactLog || []), ...(Array.isArray(patch.contactLog) ? patch.contactLog : [patch.contactLog])];
+    delete update.contactLog;
+  }
   updateStudentRisk(studentId, update);
   
   if ('interventionStatus' in patch) {

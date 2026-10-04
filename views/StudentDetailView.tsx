@@ -5,6 +5,7 @@ import { TrendChart } from '@/components/TrendChart';
 import { FactorBreakdownList } from '@/components/FactorBreakdownList';
 import { CounselingCard } from '@/components/CounselingCard';
 import { ContactPanel } from '@/components/ContactPanel';
+import { computeEscalationStep } from '@/lib/counseling';
 import { EscalationLadder } from '@/components/EscalationLadder';
 import { computeRiskScore, RawStudentData } from '@/lib/riskEngine';
 import { weekNum } from '@/lib/weeks';
@@ -56,12 +57,25 @@ export const StudentDetailView: React.FC<StudentDetailViewProps> = ({
   const interventionResolved =
     student.interventionStatus === 'Resolved' || student.activeIntervention?.status === 'Resolved';
 
+  // Synchronize local state on student view load.
+  const q5Stress = student.counseling?.answers?.find((a: any) => a.questionId === 'Q5')?.rating;
+  const lastContactDate = student.contactLog && student.contactLog.length > 0
+    ? [...student.contactLog].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+    : null;
+  const escalation = student.activeIntervention ? computeEscalationStep(
+    student.activeIntervention.assignedDate,
+    lastContactDate,
+    student.planResponse?.status || null,
+    student.riskLevel,
+    null,
+    q5Stress
+  ) : null;
+
   // With no contributing factors the engine recommends "Monitor" — routine
   // observation, not a case to open. Offering an assignable action there led to
   // empty "Other" interventions, so the banner becomes informational instead.
   const noRiskFactors = (student.contributingFactors?.length ?? 0) === 0;
 
-  // Synchronize local state on student view load.
   useEffect(() => {
     setGroqExplanation(student.aiExplanation);
     setIsGroqPowered(false);
@@ -236,8 +250,18 @@ export const StudentDetailView: React.FC<StudentDetailViewProps> = ({
                 </span>
               )}
             </div>
-            <div className="border-l-2 border-[#0D0D0D] pl-3">
+            <div className="border-l-2 border-[#0D0D0D] pl-3 flex flex-col items-end gap-1">
               <RiskBadge riskLevel={student.riskLevel} size="lg" />
+              {escalation && escalation.isPriority && (
+                <span className="inline-flex items-center px-1.5 py-0.5 bg-[#D62828] text-white text-[10px] font-black uppercase border border-[#0D0D0D]">
+                  Urgent Priority
+                </span>
+              )}
+              {escalation && escalation.statusLabel && escalation.statusLabel !== 'None' && (
+                <span className="inline-flex items-center px-1.5 py-0.5 bg-neutral-200 text-[#0D0D0D] text-[10px] font-bold border border-[#0D0D0D]">
+                  {escalation.statusLabel}
+                </span>
+              )}
             </div>
           </div>
         </div>

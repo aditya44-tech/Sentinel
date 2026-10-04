@@ -14,6 +14,8 @@ const StudentSchema = new mongoose.Schema({
   riskScore: { type: Number, default: 0 },
   riskLevel: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Low' },
   interventionStatus: { type: String, enum: INTERVENTION_STATUSES, default: 'None' },
+  escalationStatusLabel: { type: String },
+  isPriority: { type: Boolean, default: false },
   
   // Detailed Data
   attendanceHistory: [{

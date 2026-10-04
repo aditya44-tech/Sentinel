@@ -58,3 +58,26 @@
   background-color: #FFFDF5;
   box-shadow: 4px 4px 0px #0D0D0D;
 }
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+/* Pause animation on hover if we want */
+.hover-pause:hover .animate-marquee {
+  animation-play-state: paused;
+}

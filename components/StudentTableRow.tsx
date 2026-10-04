@@ -53,7 +53,19 @@ export const StudentTableRow: React.FC<StudentTableRowProps> = ({ student, onSel
         <RiskBadge riskLevel={student.riskLevel} size="sm" />
       </td>
       <td className="p-3.5 border-r-2 border-[#0D0D0D] whitespace-nowrap">
-        <InterventionStatusBadge status={student.interventionStatus} size="sm" />
+        <div className="flex flex-col gap-1">
+          <InterventionStatusBadge status={student.interventionStatus} size="sm" />
+          {student.isPriority && (
+            <span className="inline-flex items-center w-fit px-1.5 py-0.5 bg-[#D62828] text-white text-[10px] font-black uppercase border border-[#0D0D0D]">
+              Urgent Priority
+            </span>
+          )}
+          {student.escalationStatusLabel && student.escalationStatusLabel !== 'None' && (
+            <span className="inline-flex items-center w-fit px-1.5 py-0.5 bg-neutral-200 text-[#0D0D0D] text-[10px] font-bold border border-[#0D0D0D]">
+              {student.escalationStatusLabel}
+            </span>
+          )}
+        </div>
       </td>
       <td className="p-3.5 text-right whitespace-nowrap">
         <button
