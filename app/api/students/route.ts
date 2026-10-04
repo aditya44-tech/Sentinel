@@ -22,7 +22,7 @@ export const GET = handle(async () => {
       const escalation = computeEscalationStep(
         s.activeIntervention.assignedDate,
         lastContactDate,
-        s.planResponse?.status || null, // Assuming planResponse is present when responded
+        s.planResponse?.responseType || null, // planResponse.responseType is set when the student responds
         s.riskLevel,
         null, // riskTrend placeholder
         q5Stress

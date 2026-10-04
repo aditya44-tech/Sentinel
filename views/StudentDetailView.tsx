@@ -65,7 +65,7 @@ export const StudentDetailView: React.FC<StudentDetailViewProps> = ({
   const escalation = student.activeIntervention ? computeEscalationStep(
     student.activeIntervention.assignedDate,
     lastContactDate,
-    student.planResponse?.status || null,
+    student.planResponse?.responseType || null,
     student.riskLevel,
     null,
     q5Stress
