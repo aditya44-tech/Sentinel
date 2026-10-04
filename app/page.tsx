@@ -116,7 +116,7 @@ export default function LandingPage() {
                     <div>
                       <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 font-mono">STUDENT ID: CS-2024-042</div>
                       <h3 className="text-2xl font-black uppercase leading-[1] mb-1">AARAV SHARMA</h3>
-                      <div className="text-xs font-bold text-gray-700 font-mono tracking-tight">Computer Science â€¢ Year 2</div>
+                      <div className="text-xs font-bold text-gray-700 font-mono tracking-tight">Computer Science • Year 2</div>
                     </div>
                     <div className="text-right flex flex-col items-end">
                       <div className="bg-[#FF4D4D] text-white px-3 py-1 border-[3px] border-[#0D0D0D] font-bold text-xs uppercase inline-block mb-1.5 shadow-[2px_2px_0px_#0D0D0D]">

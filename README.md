@@ -16,14 +16,14 @@ Built for **Hack2Ignite 2026**.
 - [How It Works](#-how-it-works)
 - [Risk Engine Deep Dive](#-risk-engine-deep-dive)
 - [How the AI Works](#-how-the-ai-works)
-- [Tech Stack](#ï¸«C8F»-tech-stack)
+- [Tech Stack](#️-tech-stack)
 - [Getting Started](#-getting-started)
 - [CSV Upload Format](#-csv-upload-format)
 - [Project Structure](#-project-structure)
 - [API Reference](#-api-reference)
 - [Testing](#-testing)
 - [Demo Data](#-demo-data)
-- [Architecture Decisions](#ï¸«C8F»-architecture-decisions)
+- [Architecture Decisions](#️-architecture-decisions)
 - [AI Usage Disclosure](#-ai-usage-disclosure)
 
 ---
@@ -46,7 +46,7 @@ Built for **Hack2Ignite 2026**.
 
 ---
 
-## ðŸ”«C90» Login Credentials
+## 🔐 Login Credentials
 
 | Role | ID / Username | Password |
 |------|---------------|----------|
@@ -88,7 +88,6 @@ Examples for student login:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-«C90»
 │  STEP 1: DATA INGESTION                                         │
 │  Mentor uploads CSV files (attendance, grades, backlogs, fees)  │
 │  → Parsed client-side, validated, stored in-memory + MongoDB    │
@@ -96,7 +95,6 @@ Examples for student login:
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-«C90»
 │  STEP 2: RISK SCORING                                           │
 │  Deterministic engine analyzes 5 weighted factors:              │
 │  Attendance (30) + Grades (25) + Backlogs (20) +               │
@@ -106,7 +104,6 @@ Examples for student login:
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-«C90»
 │  STEP 3: AI EXPLANATION                                         │
 │  Server-side Groq API call translates scores → human text       │
 │  Primary: qwen/qwen3.8-27b | Fallback: llama-3.3-70b-versatile │
@@ -115,7 +112,6 @@ Examples for student login:
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-«C90»
 │  STEP 4: INTERVENTION                                           │
 │  Mentor reviews student detail → assigns intervention:          │
 │  • Extra Class / Tutoring (for grade decline)                   │
@@ -126,7 +122,6 @@ Examples for student login:
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-«C90»
 │  STEP 5: STUDENT VISIBILITY                                     │
 │  Student logs in → sees their risk profile, active intervention │
 │  with schedule, instructor, and subject details                 │
@@ -134,7 +129,6 @@ Examples for student login:
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-«C90»
 │  STEP 6: OUTCOME TRACKING                                       │
 │  Next week: mentor uploads new attendance/grades                │
 │  → Risk score recalculates → compared against baseline          │
@@ -255,7 +249,7 @@ Sentinel uses AI **exclusively as a translation layer, never for scoring.**
 
 ---
 
-## ðŸ› ï¸«C8F» Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology |
 |-------|------------|
@@ -351,7 +345,7 @@ S002,Nidhi Pillai,Computer Science,2,50,Week 1,46,60,52,49,41
 
 ---
 
-## ðŸ“«C81» Project Structure
+## 📁 Project Structure
 
 ```
 sentinel/
@@ -521,7 +515,7 @@ Sentinel ships with **50 pre-seeded Computer Science students** (S001–S050) wi
 
 ---
 
-## ðŸ«C8F»-ï¸«C8F» Architecture Decisions
+## 🏗️ Architecture Decisions
 
 | Decision | Why |
 |----------|-----|
