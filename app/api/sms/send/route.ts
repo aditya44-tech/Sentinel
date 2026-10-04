@@ -39,7 +39,7 @@ export const POST = handle(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          'x-api-key': apiKey as string,
         },
         body: JSON.stringify({ recipients: [recipient], message }),
       });
