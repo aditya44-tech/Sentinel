@@ -18,9 +18,6 @@ export default function LandingPage() {
             <span className="font-black font-mono text-xl uppercase tracking-tighter text-[#0D0D0D]">
               SENTINEL
             </span>
-            <span className="hidden sm:inline-block border-[2px] border-[#0D0D0D] bg-[#d4ff00] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest font-mono ml-1">
-              BETA
-            </span>
           </div>
 
           {/* Nav links */}
