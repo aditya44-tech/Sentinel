@@ -42,7 +42,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ students, onLogin }) => {
       if (res.ok) {
         onLogin({ role: 'mentor', name: 'Mentor' });
       } else {
-        setError('Invalid mentor credentials. Please try again.');
+        // Surface the server's reason (misconfiguration, rate limit) instead of
+        // blaming the user's password for every failure.
+        const data = await res.json().catch(() => null);
+        setError(
+          res.status === 401
+            ? 'Invalid mentor credentials. Please try again.'
+            : data?.error || 'Login failed. Please try again.'
+        );
       }
     } catch {
       setError('An error occurred during login.');

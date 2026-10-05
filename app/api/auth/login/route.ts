@@ -23,11 +23,20 @@ export const POST = handle(async (req) => {
   if (body.role === 'mentor') {
     const expected = process.env.MENTOR_PASSWORD ?? '';
     const given = String(body.password ?? '');
-    const ok =
-      expected.length > 0 &&
-      given.length === expected.length &&
-      crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected));
-    if (!ok) throw new HttpError(401, 'Invalid credentials');
+    if (expected.length === 0) {
+      // `.env*` is gitignored, so a fresh deployment has no mentor password
+      // configured at all. Reporting that as "Invalid credentials" sends every
+      // operator down the wrong path — say what is actually missing.
+      console.error('[auth] MENTOR_PASSWORD is not set — mentor login is disabled');
+      throw new HttpError(503, 'Mentor login is not configured on this server (set MENTOR_PASSWORD)');
+    }
+    const a = Buffer.from(given, 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+    const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+    if (!ok) {
+      console.warn(`[auth] mentor password mismatch (expected ${b.length} bytes, got ${a.length})`);
+      throw new HttpError(401, 'Invalid credentials');
+    }
     session = { role: 'mentor' };
   } else {
     const id = cleanId(body.studentId);

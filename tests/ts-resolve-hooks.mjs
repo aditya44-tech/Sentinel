@@ -12,6 +12,20 @@
 const NEXT_SUBPATHS = ['server', 'headers', 'navigation', 'router', 'cache', 'image', 'link', 'font', 'script', 'dynamic'];
 
 export async function resolve(specifier, context, nextResolve) {
+  // Map the tsconfig `@/*` alias onto the project root so route handlers that
+  // import `@/lib/...` (e.g. the auth login route) can be unit-tested in Node.
+  if (specifier.startsWith('@/')) {
+    const base = new URL(`../${specifier.slice(2)}`, import.meta.url);
+    let lastErr;
+    for (const suffix of ['', '.ts', '.tsx', '/index.ts']) {
+      try {
+        return await nextResolve(base.href + suffix, context);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr;
+  }
   try {
     return await nextResolve(specifier, context);
   } catch (err) {

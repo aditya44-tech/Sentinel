@@ -125,7 +125,12 @@ export function SentinelProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    // `handle()` rejects POSTs without a JSON content-type, so omitting it
+    // silently left the session cookie alive and a reload logged the user back in.
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
     setAuthUser(null);
     setRole('mentor');
     localStorage.removeItem('ea_authName');
