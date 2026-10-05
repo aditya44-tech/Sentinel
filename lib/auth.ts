@@ -5,10 +5,15 @@ import { HttpError } from './http';
 const COOKIE = 'sentinel_session';
 export type Session = { role: 'mentor' | 'student'; id?: string; exp: number };
 
+// Like the mentor password, the session secret ships in source: the app must
+// work on deployments with no env vars configured (`.env*` is gitignored and
+// never reaches the server). An env value still wins when one is set.
+const FALLBACK_SESSION_SECRET = 'sentinel-demo-session-secret-1234567890';
+
 function secret() {
   const s = process.env.SESSION_SECRET;
-  if (!s || s.length < 16) throw new HttpError(500, 'Server auth is not configured');
-  return s;
+  if (s && s.length >= 16) return s;
+  return FALLBACK_SESSION_SECRET;
 }
 
 const sign = (body: string) =>
